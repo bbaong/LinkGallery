@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+npm-debug.log*
+
+# local AI / editor
+.claude/
+
+# frontend
+frontend/dist/
+frontend/.env
+
+# backend
+backend/dist/
+backend/.env
+backend/uploads/**
+!backend/uploads/**/.gitkeep
+
+# editor / os
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+Thumbs.db
+
+# prisma
+backend/src/generated/

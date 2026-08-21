@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Pretendard Variable", Pretendard, "Segoe UI",
+    Roboto, "Noto Sans KR", sans-serif;
+
+  --color-canvas: #faf9f6;
+  --color-surface: #ffffff;
+  --color-ink: #16151a;
+  --color-ink-soft: #6b6875;
+  --color-line: #ececea;
+
+  --color-brand-50: #f5f1ff;
+  --color-brand-100: #ece3ff;
+  --color-brand-300: #c6b3ff;
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7c3aed;
+  --color-brand-700: #6427c8;
+
+  --animate-landing-float: landing-float 6s ease-in-out infinite;
+  --animate-landing-rise: landing-rise 0.7s ease-out both;
+  --animate-landing-marquee: landing-marquee 32s linear infinite;
+}
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-landing-float,
+  .animate-landing-rise,
+  .animate-landing-marquee {
+    animation: none !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #121116;
+    --color-surface: #1b1a20;
+    --color-ink: #f4f3f6;
+    --color-ink-soft: #a6a3ae;
+    --color-line: #2b2a31;
+  }
+}
