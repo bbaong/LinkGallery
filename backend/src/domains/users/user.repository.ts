@@ -1,5 +1,5 @@
 import { prisma } from "../../config/prisma";
-import type { AuthProvider, User } from "../../generated/prisma/client";
+import type { AuthProvider, CoverType, User } from "../../generated/prisma/client";
 
 export function toPublicUser(user: User) {
   return {
@@ -8,6 +8,12 @@ export function toPublicUser(user: User) {
     email: user.email,
     nickname: user.nickname,
     avatarUrl: user.avatarUrl,
+    avatarType: user.avatarType,
+    avatarValue: user.avatarValue,
+    bannerType: user.bannerType,
+    bannerValue: user.bannerValue,
+    hasPassword: Boolean(user.passwordHash),
+    provider: user.provider,
     createdAt: user.createdAt,
   };
 }
@@ -35,6 +41,10 @@ export const userRepository = {
     passwordHash?: string | null;
     nickname: string;
     avatarUrl?: string | null;
+    avatarType?: CoverType | null;
+    avatarValue?: string | null;
+    bannerType?: CoverType;
+    bannerValue?: string;
     googleId?: string | null;
     provider?: AuthProvider;
   }) {
@@ -46,11 +56,20 @@ export const userRepository = {
     data: {
       googleId?: string | null;
       avatarUrl?: string | null;
+      avatarType?: CoverType | null;
+      avatarValue?: string | null;
+      bannerType?: CoverType;
+      bannerValue?: string;
       nickname?: string;
       email?: string | null;
+      passwordHash?: string | null;
       provider?: AuthProvider;
     }
   ) {
     return prisma.user.update({ where: { id }, data });
+  },
+
+  delete(id: string) {
+    return prisma.user.delete({ where: { id } });
   },
 };

@@ -1,4 +1,5 @@
 import { cn } from "../../../shared/lib/cn";
+import { useT } from "../../../shared/i18n/useT";
 
 export type CategoryFilter = "all" | "none" | string;
 
@@ -15,18 +16,19 @@ export function CategoryFilterBar({
   onChange,
   uncategorizedCount,
 }: CategoryFilterBarProps) {
+  const { t } = useT();
   if (categories.length === 0) return null;
 
   return (
     <div className="mb-4">
-      <p className="mb-2 text-sm font-medium text-ink">카테고리별 보기</p>
+      <p className="mb-2 text-sm font-medium text-ink">{t("folder.categoryView")}</p>
       <div className="flex flex-wrap gap-2">
         <FilterChip selected={value === "all"} onClick={() => onChange("all")}>
-          전체
+          {t("folder.categoryAll")}
         </FilterChip>
         {uncategorizedCount > 0 ? (
           <FilterChip selected={value === "none"} onClick={() => onChange("none")}>
-            미분류
+            {t("folder.uncategorized")}
           </FilterChip>
         ) : null}
         {categories.map((name) => (

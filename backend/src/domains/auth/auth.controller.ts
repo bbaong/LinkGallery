@@ -6,6 +6,9 @@ import {
   googleLoginSchema,
   usernameQuerySchema,
   updateProfileSchema,
+  changePasswordSchema,
+  confirmUsernameSchema,
+  deleteAccountSchema,
 } from "./auth.schema";
 import { sendSuccess } from "../../shared/response";
 import { AUTH_COOKIE_NAME } from "../../shared/constants";
@@ -65,6 +68,25 @@ export const authController = {
   async updateProfile(req: Request, res: Response) {
     const input = updateProfileSchema.parse(req.body);
     const user = await authService.updateProfile(req.userId!, input);
-    sendSuccess(res, user, "이메일이 저장되었습니다.");
+    sendSuccess(res, user, "프로필이 저장되었습니다.");
+  },
+
+  async changePassword(req: Request, res: Response) {
+    const input = changePasswordSchema.parse(req.body);
+    await authService.changePassword(req.userId!, input);
+    sendSuccess(res, null, "비밀번호가 변경되었습니다.");
+  },
+
+  async resetWorkspace(req: Request, res: Response) {
+    const input = confirmUsernameSchema.parse(req.body);
+    const user = await authService.resetWorkspace(req.userId!, input);
+    sendSuccess(res, user, "데이터를 초기화했습니다.");
+  },
+
+  async deleteAccount(req: Request, res: Response) {
+    const input = deleteAccountSchema.parse(req.body);
+    await authService.deleteAccount(req.userId!, input);
+    res.clearCookie(AUTH_COOKIE_NAME, { ...cookieOptions, maxAge: undefined });
+    sendSuccess(res, null, "계정이 삭제되었습니다.");
   },
 };

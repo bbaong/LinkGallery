@@ -3,7 +3,9 @@ import type { DragEvent } from "react";
 import { GripVertical } from "lucide-react";
 import { cn } from "../../../shared/lib/cn";
 import type { Link } from "../types";
+import type { LinkViewMode } from "../../../shared/preferences/linkView";
 import { LinkCard } from "./LinkCard";
+import { useT } from "../../../shared/i18n/useT";
 
 function moveItem<T>(list: T[], from: number, to: number) {
   const next = [...list];
@@ -18,6 +20,8 @@ interface SortableLinkGridProps {
   onReorder: (orderedIds: string[]) => void;
   onEdit: (link: Link) => void;
   onDelete: (link: Link) => void;
+  showCreator?: boolean;
+  view?: LinkViewMode;
 }
 
 export function SortableLinkGrid({
@@ -26,7 +30,10 @@ export function SortableLinkGrid({
   onReorder,
   onEdit,
   onDelete,
+  showCreator = false,
+  view = "card",
 }: SortableLinkGridProps) {
+  const { t } = useT();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const suppressClickRef = useRef(false);
@@ -104,16 +111,16 @@ export function SortableLinkGrid({
             <button
               type="button"
               data-drag-handle
-              aria-label="순서 변경"
+              aria-label={t("link.reorderAria")}
               className={cn(
-                "absolute left-14 top-2 z-10 flex h-8 w-8 cursor-grab items-center justify-center rounded-full text-ink-soft transition-opacity hover:bg-canvas hover:text-ink active:cursor-grabbing",
+                "absolute left-2 top-2 z-10 flex h-8 w-8 cursor-grab items-center justify-center rounded-full bg-surface/90 text-ink-soft shadow-sm transition-opacity hover:bg-surface hover:text-ink active:cursor-grabbing",
                 draggingId === link.id ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
               )}
             >
               <GripVertical className="h-4 w-4" />
             </button>
           ) : null}
-          <LinkCard link={link} onEdit={onEdit} onDelete={onDelete} />
+          <LinkCard link={link} onEdit={onEdit} onDelete={onDelete} showCreator={showCreator} view={view} />
         </div>
       ))}
     </div>

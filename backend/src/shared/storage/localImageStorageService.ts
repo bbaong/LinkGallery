@@ -2,9 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { env } from "../../config/env";
-import type { ImageStorageService, StoredImage } from "./ImageStorageService";
-
-const FOLDER_COVER_DIR = path.join(process.cwd(), env.UPLOAD_DIR, "folder-covers");
+import type { ImageStorageService, StoredImage, UploadKind } from "./ImageStorageService";
 
 const EXTENSION_BY_MIME: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -12,13 +10,17 @@ const EXTENSION_BY_MIME: Record<string, string> = {
   "image/webp": ".webp",
 };
 
-async function ensureDir() {
-  await fs.mkdir(FOLDER_COVER_DIR, { recursive: true });
+function dirFor(kind: UploadKind) {
+  return path.join(process.cwd(), env.UPLOAD_DIR, kind);
+}
+
+async function ensureDir(kind: UploadKind) {
+  await fs.mkdir(dirFor(kind), { recursive: true });
 }
 
 export const localImageStorageService: ImageStorageService = {
-  async save(file): Promise<StoredImage> {
-    await ensureDir();
+  async save(file, kind = "folder-covers"): Promise<StoredImage> {
+    await ensureDir(kind);
 
     const extension = EXTENSION_BY_MIME[file.mimetype];
     if (!extension) {
@@ -26,16 +28,16 @@ export const localImageStorageService: ImageStorageService = {
     }
 
     const key = `${randomUUID()}${extension}`;
-    const destination = path.join(FOLDER_COVER_DIR, key);
+    const destination = path.join(dirFor(kind), key);
 
     await fs.writeFile(destination, file.buffer);
 
-    return { key, url: `/uploads/folder-covers/${key}` };
+    return { key, url: `/uploads/${kind}/${key}` };
   },
 
-  async remove(key): Promise<void> {
+  async remove(key, kind = "folder-covers"): Promise<void> {
     const safeKey = path.basename(key);
-    const target = path.join(FOLDER_COVER_DIR, safeKey);
+    const target = path.join(dirFor(kind), safeKey);
     try {
       await fs.unlink(target);
     } catch (err) {

@@ -1,19 +1,54 @@
 import { prisma } from "../../config/prisma";
 import type { CreateFolderInput, UpdateFolderInput } from "./folder.schema";
 
+const memberUserSelect = {
+  id: true,
+  nickname: true,
+  avatarUrl: true,
+  avatarType: true,
+  avatarValue: true,
+} as const;
+
+const folderDetailInclude = {
+  user: { select: memberUserSelect },
+  members: {
+    include: { user: { select: memberUserSelect } },
+    orderBy: { joinedAt: "asc" as const },
+  },
+  _count: { select: { links: true, members: true } },
+};
+
 export const folderRepository = {
-  findManyByUser(userId: string) {
+  findManyAccessible(userId: string) {
     return prisma.folder.findMany({
-      where: { userId },
-      include: { _count: { select: { links: true } } },
+      where: {
+        OR: [{ userId }, { members: { some: { userId } } }],
+      },
+      include: folderDetailInclude,
       orderBy: [{ position: "asc" }, { createdAt: "desc" }],
     });
   },
 
-  findByIdAndUser(id: string, userId: string) {
-    return prisma.folder.findFirst({
-      where: { id, userId },
-      include: { _count: { select: { links: true } } },
+  findById(id: string) {
+    return prisma.folder.findUnique({
+      where: { id },
+      include: folderDetailInclude,
+    });
+  },
+
+  findByInviteCode(code: string) {
+    return prisma.folder.findUnique({
+      where: { inviteCode: code },
+      include: folderDetailInclude,
+    });
+  },
+
+  findAccessibleFolderIds(userId: string) {
+    return prisma.folder.findMany({
+      where: {
+        OR: [{ userId }, { members: { some: { userId } } }],
+      },
+      select: { id: true },
     });
   },
 
@@ -30,8 +65,11 @@ export const folderRepository = {
         coverType: input.coverType,
         coverValue: input.coverValue,
         position,
+        members: {
+          create: { userId, role: "OWNER" },
+        },
       },
-      include: { _count: { select: { links: true } } },
+      include: folderDetailInclude,
     });
   },
 
@@ -44,11 +82,33 @@ export const folderRepository = {
         ...(input.coverType !== undefined ? { coverType: input.coverType } : {}),
         ...(input.coverValue !== undefined ? { coverValue: input.coverValue } : {}),
       },
-      include: { _count: { select: { links: true } } },
+      include: folderDetailInclude,
+    });
+  },
+
+  updateInviteCode(id: string, inviteCode: string) {
+    return prisma.folder.update({
+      where: { id },
+      data: { inviteCode },
+      include: folderDetailInclude,
     });
   },
 
   delete(id: string) {
     return prisma.folder.delete({ where: { id } });
+  },
+
+  addMember(folderId: string, userId: string, role: "OWNER" | "EDITOR") {
+    return prisma.folderMember.create({
+      data: { folderId, userId, role },
+    });
+  },
+
+  ensureOwnerMember(folderId: string, userId: string) {
+    return prisma.folderMember.upsert({
+      where: { folderId_userId: { folderId, userId } },
+      update: { role: "OWNER" },
+      create: { folderId, userId, role: "OWNER" },
+    });
   },
 };

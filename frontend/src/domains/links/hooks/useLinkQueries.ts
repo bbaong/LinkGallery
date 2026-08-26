@@ -111,3 +111,44 @@ export function useDeleteLinkMutation(folderId: string) {
     onSuccess: invalidate,
   });
 }
+
+const previewRefreshAttempted = new Set<string>();
+let previewRefreshActive = 0;
+const previewRefreshQueue: Array<() => void> = [];
+const PREVIEW_REFRESH_LIMIT = 3;
+
+function enqueuePreviewRefresh<T>(task: () => Promise<T>) {
+  return new Promise<T>((resolve, reject) => {
+    const run = () => {
+      previewRefreshActive += 1;
+      task()
+        .then(resolve, reject)
+        .finally(() => {
+          previewRefreshActive -= 1;
+          previewRefreshQueue.shift()?.();
+        });
+    };
+    if (previewRefreshActive < PREVIEW_REFRESH_LIMIT) run();
+    else previewRefreshQueue.push(run);
+  });
+}
+
+export function useRefreshLinkPreviewMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (linkId: string) => enqueuePreviewRefresh(() => linkApi.refreshPreview(linkId)),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Link[]>(queryKeys.links.byFolder(updated.folderId), (prev) =>
+        prev?.map((link) => (link.id === updated.id ? { ...link, previewImageUrl: updated.previewImageUrl } : link))
+      );
+    },
+  });
+}
+
+export function shouldRefreshLinkPreview(link: Link) {
+  return !link.previewImageUrl && !previewRefreshAttempted.has(link.id);
+}
+
+export function markLinkPreviewAttempted(linkId: string) {
+  previewRefreshAttempted.add(linkId);
+}

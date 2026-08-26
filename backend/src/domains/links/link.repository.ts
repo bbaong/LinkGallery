@@ -1,11 +1,16 @@
 import { prisma } from "../../config/prisma";
 import type { NormalizedUrl } from "./link.util";
 
+const creatorSelect = {
+  user: {
+    select: { id: true, nickname: true, avatarUrl: true, avatarType: true, avatarValue: true },
+  },
+} as const;
+
 export const linkRepository = {
-  findManyByFolder(userId: string, folderId: string, search?: string) {
+  findManyByFolder(folderId: string, search?: string) {
     return prisma.link.findMany({
       where: {
-        userId,
         folderId,
         ...(search
           ? {
@@ -17,30 +22,33 @@ export const linkRepository = {
             }
           : {}),
       },
+      include: creatorSelect,
       orderBy: [{ position: "asc" }, { createdAt: "desc" }],
     });
   },
 
-  findRecentByUser(userId: string, limit: number) {
+  findRecentByFolderIds(folderIds: string[], limit: number) {
+    if (folderIds.length === 0) return Promise.resolve([]);
     return prisma.link.findMany({
-      where: { userId, lastVisitedAt: { not: null } },
+      where: { folderId: { in: folderIds }, lastVisitedAt: { not: null } },
       orderBy: { lastVisitedAt: "desc" },
       take: limit,
       include: { folder: { select: { id: true, name: true, icon: true } } },
     });
   },
 
-  findManyByUser(userId: string, limit: number) {
+  findManyByFolderIds(folderIds: string[], limit: number) {
+    if (folderIds.length === 0) return Promise.resolve([]);
     return prisma.link.findMany({
-      where: { userId },
+      where: { folderId: { in: folderIds } },
       orderBy: [{ lastVisitedAt: "desc" }, { createdAt: "desc" }],
       take: limit,
       include: { folder: { select: { id: true, name: true, icon: true } } },
     });
   },
 
-  findByIdAndUser(id: string, userId: string) {
-    return prisma.link.findFirst({ where: { id, userId } });
+  findById(id: string) {
+    return prisma.link.findUnique({ where: { id } });
   },
 
   findDuplicate(folderId: string, urlHash: string, excludeId?: string) {
@@ -74,6 +82,7 @@ export const linkRepository = {
         position,
         category,
       },
+      include: creatorSelect,
     });
   },
 
@@ -83,12 +92,13 @@ export const linkRepository = {
       url?: string;
       urlHash?: string;
       faviconUrl?: string;
+      previewImageUrl?: string | null;
       title?: string;
       description?: string;
       category?: string | null;
     }
   ) {
-    return prisma.link.update({ where: { id }, data });
+    return prisma.link.update({ where: { id }, data, include: creatorSelect });
   },
 
   delete(id: string) {

@@ -5,6 +5,7 @@ import { Modal } from "../../../shared/ui/Modal";
 import { Button } from "../../../shared/ui/Button";
 import type { RecentLink } from "../types";
 import { QUICK_LAUNCH_MAX } from "../lib/quickLaunch";
+import { useT } from "../../../shared/i18n/useT";
 
 function getDomain(url: string) {
   try {
@@ -30,6 +31,7 @@ export function QuickLaunchEditModal({
   onSave,
 }: QuickLaunchEditModalProps) {
   const [draft, setDraft] = useState<string[]>(selectedIds);
+  const { t } = useT();
 
   useEffect(() => {
     if (open) setDraft(selectedIds);
@@ -57,7 +59,7 @@ export function QuickLaunchEditModal({
     setDraft((current) => {
       if (current.includes(id)) return current.filter((item) => item !== id);
       if (current.length >= QUICK_LAUNCH_MAX) {
-        toast.error(`빠른 실행은 ${QUICK_LAUNCH_MAX}개까지 넣을 수 있어요.`);
+        toast.error(t("quick.max", { max: QUICK_LAUNCH_MAX }));
         return current;
       }
       return [...current, id];
@@ -68,15 +70,15 @@ export function QuickLaunchEditModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="빠른 실행 편집"
+      title={t("quick.title")}
     >
       <div className="flex flex-col gap-4">
         <p className="text-sm text-ink-soft">
-          홈에서 바로 열고 싶은 링크를 고르세요. 최대 {QUICK_LAUNCH_MAX}개까지 가능해요.
+          {t("quick.hint", { max: QUICK_LAUNCH_MAX })}
         </p>
         {grouped.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">
-            저장된 링크가 아직 없어요.
+            {t("quick.empty")}
           </p>
         ) : (
           <div className="flex max-h-[50vh] flex-col gap-4 overflow-y-auto pr-1">
@@ -121,7 +123,7 @@ export function QuickLaunchEditModal({
         )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            취소
+            {t("common.cancel")}
           </Button>
           <Button
             type="button"
@@ -130,7 +132,7 @@ export function QuickLaunchEditModal({
               onClose();
             }}
           >
-            저장
+            {t("common.save")}
           </Button>
         </div>
       </div>

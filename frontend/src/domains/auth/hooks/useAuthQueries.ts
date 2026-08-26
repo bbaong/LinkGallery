@@ -3,7 +3,8 @@ import { ApiRequestError } from "../../../shared/api/client";
 import { queryKeys } from "../../../shared/api/queryKeys";
 import { authApi } from "../api/authApi";
 import { useAuthStore } from "../store/authStore";
-import type { LoginFormValues, SignupFormValues, UpdateEmailFormValues } from "../schema/authSchema";
+import type { LoginFormValues, SignupFormValues } from "../schema/authSchema";
+import type { UpdateProfileInput } from "../api/authApi";
 import { usernameSchema } from "../schema/authSchema";
 
 export function useMeQuery() {
@@ -85,10 +86,43 @@ export function useUsernameAvailableQuery(username: string) {
 export function useUpdateProfileMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: UpdateEmailFormValues) => authApi.updateProfile(input),
+    mutationFn: (input: UpdateProfileInput) => authApi.updateProfile(input),
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.auth.me, user);
       useAuthStore.getState().setUser(user);
+      queryClient.invalidateQueries({ queryKey: queryKeys.folders.all });
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+  });
+}
+
+export function useChangePasswordMutation() {
+  return useMutation({
+    mutationFn: authApi.changePassword,
+  });
+}
+
+export function useResetWorkspaceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: authApi.resetWorkspace,
+    onSuccess: (user) => {
+      queryClient.setQueryData(queryKeys.auth.me, user);
+      useAuthStore.getState().setUser(user);
+      queryClient.invalidateQueries({ queryKey: queryKeys.folders.all });
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+  });
+}
+
+export function useDeleteAccountMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: authApi.deleteAccount,
+    onSuccess: () => {
+      useAuthStore.getState().setUser(null);
+      queryClient.setQueryData(queryKeys.auth.me, null);
+      queryClient.clear();
     },
   });
 }

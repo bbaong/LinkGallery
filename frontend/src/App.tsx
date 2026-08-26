@@ -7,6 +7,7 @@ import { PublicOnlyRoute } from "./app/routes/PublicOnlyRoute";
 import { LoginPage } from "./domains/auth/pages/LoginPage";
 import { SignupPage } from "./domains/auth/pages/SignupPage";
 import { SettingsPage } from "./domains/auth/pages/SettingsPage";
+import { AccountSettingsPage } from "./domains/auth/pages/AccountSettingsPage";
 import { DashboardPage } from "./domains/folders/pages/DashboardPage";
 import { FolderDetailPage } from "./domains/folders/pages/FolderDetailPage";
 
@@ -23,7 +24,8 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/folders/:folderId" element={<FolderDetailPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile" element={<SettingsPage />} />
+          <Route path="/settings" element={<AccountSettingsPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

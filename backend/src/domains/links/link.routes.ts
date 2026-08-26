@@ -12,6 +12,7 @@ router.get("/", asyncHandler(linkController.listAll));
 router.post("/", asyncHandler(linkController.create));
 router.patch("/reorder", asyncHandler(linkController.reorder));
 router.post("/:linkId/visit", asyncHandler(linkController.recordVisit));
+router.post("/:linkId/preview", asyncHandler(linkController.refreshPreview));
 router.patch("/:linkId", asyncHandler(linkController.update));
 router.delete("/:linkId", asyncHandler(linkController.remove));
 

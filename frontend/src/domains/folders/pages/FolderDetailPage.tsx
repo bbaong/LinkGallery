@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Link2, Plus, Search } from "lucide-react";
+import { ArrowLeft, LayoutGrid, Link2, PanelsTopLeft, Plus, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageContainer } from "../../../shared/ui/PageContainer";
 import { Logo } from "../../../shared/ui/Logo";
@@ -10,6 +10,7 @@ import { Spinner } from "../../../shared/ui/Spinner";
 import { EmptyState } from "../../../shared/ui/EmptyState";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ApiRequestError } from "../../../shared/api/client";
+import { UserAvatar } from "../../../shared/ui/UserAvatar";
 import { UserMenu } from "../../auth/components/UserMenu";
 import { SortableLinkGrid } from "../../links/components/SortableLinkGrid";
 import { LinkFormModal } from "../../links/components/LinkFormModal";
@@ -24,6 +25,7 @@ import type { Link as LinkItem } from "../../links/types";
 import type { LinkFormValues } from "../../links/schema/linkSchema";
 import { FolderCover } from "../components/FolderCover";
 import { FolderFormModal } from "../components/FolderFormModal";
+import { InviteFolderModal } from "../components/InviteFolderModal";
 import { CategoryFilterBar } from "../components/CategoryFilterBar";
 import type { CategoryFilter } from "../components/CategoryFilterBar";
 import {
@@ -32,6 +34,9 @@ import {
   useUpdateFolderMutation,
 } from "../hooks/useFolderQueries";
 import type { FolderFormValues } from "../schema/folderSchema";
+import { useLinkViewStore } from "../../../shared/preferences/linkViewStore";
+import { cn } from "../../../shared/lib/cn";
+import { useT } from "../../../shared/i18n/useT";
 
 type LinkSort = "newest" | "oldest" | "custom";
 
@@ -66,6 +71,7 @@ function loadCategoryFilter(folderId: string): CategoryFilter {
 export function FolderDetailPage() {
   const { folderId } = useParams<{ folderId: string }>();
   const navigate = useNavigate();
+  const { t } = useT();
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<LinkSort>("newest");
@@ -75,6 +81,7 @@ export function FolderDetailPage() {
   const [deletingLink, setDeletingLink] = useState<LinkItem | null>(null);
   const [isFolderEditOpen, setIsFolderEditOpen] = useState(false);
   const [isFolderDeleteOpen, setIsFolderDeleteOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isEditLinkSubmitting, setIsEditLinkSubmitting] = useState(false);
 
   const folderQuery = useFolderQuery(folderId);
@@ -85,9 +92,14 @@ export function FolderDetailPage() {
   const reorderLinksMutation = useReorderLinksMutation(folderId ?? "");
   const updateFolderMutation = useUpdateFolderMutation();
   const deleteFolderMutation = useDeleteFolderMutation();
+  const linkView = useLinkViewStore((state) => state.mode);
+  const setLinkView = useLinkViewStore((state) => state.setMode);
 
   const folder = folderQuery.data;
   const links = useMemo(() => linksQuery.data ?? [], [linksQuery.data]);
+  const isOwner = folder?.myRole === "OWNER";
+  const isShared = (folder?.memberCount ?? 0) > 1;
+  const members = folder?.members ?? [];
 
   useEffect(() => {
     if (!folderId) return;
@@ -163,10 +175,10 @@ export function FolderDetailPage() {
   async function handleCreateLink(values: LinkFormValues) {
     try {
       await createLinkMutation.mutateAsync(values);
-      toast.success("링크가 저장되었습니다.");
+      toast.success(t("link.saved"));
       setIsCreateOpen(false);
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "링크 저장에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("link.saveFailed");
       toast.error(message);
     }
   }
@@ -176,10 +188,10 @@ export function FolderDetailPage() {
     setIsEditLinkSubmitting(true);
     try {
       await updateLinkMutation.mutateAsync({ linkId: editingLink.id, input: values });
-      toast.success("링크가 수정되었습니다.");
+      toast.success(t("link.updated"));
       setEditingLink(null);
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "링크 수정에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("link.updateFailed");
       toast.error(message);
     } finally {
       setIsEditLinkSubmitting(false);
@@ -190,10 +202,10 @@ export function FolderDetailPage() {
     if (!deletingLink) return;
     try {
       await deleteLinkMutation.mutateAsync(deletingLink.id);
-      toast.success("링크가 삭제되었습니다.");
+      toast.success(t("link.deleted"));
       setDeletingLink(null);
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "링크 삭제에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("link.deleteFailed");
       toast.error(message);
     }
   }
@@ -202,10 +214,10 @@ export function FolderDetailPage() {
     if (!folderId) return;
     try {
       await updateFolderMutation.mutateAsync({ folderId, input: values });
-      toast.success("폴더가 수정되었습니다.");
+      toast.success(t("dash.updated"));
       setIsFolderEditOpen(false);
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "폴더 수정에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("dash.updateFailed");
       toast.error(message);
     }
   }
@@ -214,10 +226,10 @@ export function FolderDetailPage() {
     if (!folderId) return;
     try {
       await deleteFolderMutation.mutateAsync(folderId);
-      toast.success("폴더가 삭제되었습니다.");
+      toast.success(t("dash.deleted"));
       navigate("/dashboard", { replace: true });
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "폴더 삭제에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("dash.deleteFailed");
       toast.error(message);
     }
   }
@@ -225,7 +237,7 @@ export function FolderDetailPage() {
   if (folderQuery.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas">
-        <Spinner label="폴더를 불러오는 중..." />
+        <Spinner label={t("dash.loadingFolders")} />
       </div>
     );
   }
@@ -235,11 +247,11 @@ export function FolderDetailPage() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-canvas px-4">
         <EmptyState
           icon={<Link2 className="h-8 w-8" />}
-          title="폴더를 찾을 수 없어요"
-          description="삭제되었거나 접근 권한이 없는 폴더입니다."
+          title={t("folder.notFound")}
+          description={t("folder.notFoundBody")}
           action={
             <Link to="/dashboard">
-              <Button>대시보드로 돌아가기</Button>
+              <Button>{t("folder.backDashboard")}</Button>
             </Link>
           }
         />
@@ -249,16 +261,18 @@ export function FolderDetailPage() {
 
   return (
     <div className="min-h-screen bg-canvas pb-20">
-      <header className="border-b border-line bg-canvas/80 backdrop-blur">
+      <header className="fixed inset-x-0 top-0 z-30 border-b border-line bg-canvas/80 backdrop-blur">
         <PageContainer className="flex h-16 items-center justify-between">
-          <Logo />
+          <Logo to="/dashboard" />
           <UserMenu />
         </PageContainer>
       </header>
 
-      <div className="relative h-40 w-full sm:h-52">
-        <FolderCover coverType={folder.coverType} coverValue={folder.coverValue} />
-        <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/20 to-transparent" />
+      <div className="pt-16">
+        <div className="relative h-40 w-full sm:h-52">
+          <FolderCover coverType={folder.coverType} coverValue={folder.coverValue} />
+          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/20 to-transparent" />
+        </div>
       </div>
 
       <PageContainer className="relative -mt-16 flex flex-col gap-8">
@@ -269,7 +283,7 @@ export function FolderDetailPage() {
               className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
             >
               <ArrowLeft className="h-4 w-4" />
-              내 폴더
+              {t("dash.myFolders")}
             </Link>
             <div className="flex items-center gap-3">
               {folder.icon ? (
@@ -279,47 +293,112 @@ export function FolderDetailPage() {
               ) : null}
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{folder.name}</h1>
-                <p className="mt-1 text-sm text-ink-soft">{folder.linkCount}개의 링크</p>
+                <p className="mt-1 text-sm text-ink-soft">{t("common.countLinks", { count: folder.linkCount })}</p>
+                {isShared ? (
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      {members.slice(0, 4).map((member) => (
+                        <UserAvatar
+                          key={member.id}
+                          nickname={member.nickname}
+                          avatarUrl={member.avatarUrl}
+                          avatarType={member.avatarType}
+                          avatarValue={member.avatarValue}
+                          size="md"
+                          className="border-2 border-canvas"
+                        />
+                      ))}
+                    </div>
+                    <p className="text-sm text-ink-soft">{t("folder.togetherCount", { count: folder.memberCount })}</p>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setIsFolderEditOpen(true)}>
-              폴더 수정
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setIsFolderDeleteOpen(true)}>
-              삭제
-            </Button>
+            {isOwner ? (
+              <>
+                <Button variant="secondary" size="sm" onClick={() => setIsFolderEditOpen(true)}>
+                  {t("folder.editTitle")}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setIsInviteOpen(true)}>
+                  <Users className="h-4 w-4" />
+                  {t("folder.invite")}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setIsFolderDeleteOpen(true)}>
+                  {t("common.delete")}
+                </Button>
+              </>
+            ) : (
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-500/20 bg-brand-500/10 px-3 text-sm font-medium text-brand-600">
+                <Users className="h-3.5 w-3.5" />
+                {t("folder.sharedBadge")}
+              </span>
+            )}
             <Button onClick={() => setIsCreateOpen(true)}>
               <Plus className="h-4 w-4" />
-              링크 추가
+              {t("folder.addLink")}
             </Button>
           </div>
         </div>
 
         <section>
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-ink">저장된 링크</h2>
+            <h2 className="text-lg font-semibold text-ink">{t("folder.savedLinks")}</h2>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div
+                role="radiogroup"
+                aria-label={t("folder.viewMode")}
+                className="inline-flex h-11 items-center rounded-2xl border border-line bg-surface p-1"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={linkView === "card"}
+                  aria-label={t("folder.viewCard")}
+                  title={t("settings.viewCard")}
+                  onClick={() => setLinkView("card")}
+                  className={cn(
+                    "inline-flex h-9 w-9 items-center justify-center rounded-xl",
+                    linkView === "card" ? "bg-canvas text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+                  )}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={linkView === "preview"}
+                  aria-label={t("folder.viewPreview")}
+                  title={t("settings.viewPreview")}
+                  onClick={() => setLinkView("preview")}
+                  className={cn(
+                    "inline-flex h-9 w-9 items-center justify-center rounded-xl",
+                    linkView === "preview" ? "bg-canvas text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+                  )}
+                >
+                  <PanelsTopLeft className="h-4 w-4" />
+                </button>
+              </div>
               <select
                 value={sort}
                 onChange={(event) => handleSortChange(event.target.value as LinkSort)}
-                aria-label="링크 정렬"
+                aria-label={t("folder.sort")}
                 className="h-11 rounded-2xl border border-line bg-surface px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
-                <option value="newest">최신순</option>
-                <option value="oldest">오래된순</option>
-                <option value="custom">직접 배치</option>
+                <option value="newest">{t("folder.sortNewest")}</option>
+                <option value="oldest">{t("folder.sortOldest")}</option>
+                <option value="custom">{t("folder.sortCustom")}</option>
               </select>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="저장한 이름으로 검색"
+                  placeholder={t("folder.searchLinks")}
                   className="w-full pl-10 sm:w-56"
-                  aria-label="저장한 이름으로 검색"
+                  aria-label={t("folder.searchLinks")}
                 />
               </div>
             </div>
@@ -334,38 +413,38 @@ export function FolderDetailPage() {
 
           {!search.trim() && categoryFilter === "all" && visibleLinks.length > 1 ? (
             <p className="mb-3 text-xs text-ink-soft">
-              카드를 끌어 위치를 바꿀 수 있어요. 옮기면 직접 배치 순서로 저장됩니다.
+              {t("folder.dragHint")}
             </p>
           ) : null}
 
           {linksQuery.isLoading ? (
-            <Spinner label="링크를 불러오는 중..." />
+            <Spinner label={t("folder.loadingLinks")} />
           ) : visibleLinks.length === 0 ? (
             search.trim() ? (
               <EmptyState
                 icon={<Search className="h-8 w-8" />}
-                title="검색 결과가 없어요"
-                description={`저장한 이름에 '${search}'가 들어간 링크가 없습니다.`}
+                title={t("dash.searchEmpty")}
+                description={t("folder.noSearchBody", { query: search })}
               />
             ) : categoryFilter !== "all" ? (
               <EmptyState
                 icon={<Search className="h-8 w-8" />}
-                title="이 카테고리에 링크가 없어요"
+                title={t("folder.noCategory")}
                 description={
                   categoryFilter === "none"
-                    ? "분류하지 않은 링크가 없습니다."
-                    : `'${categoryFilter}'로 등록된 링크가 없습니다.`
+                    ? t("folder.noUncategorized")
+                    : t("folder.noCategoryBody", { name: categoryFilter })
                 }
               />
             ) : (
               <EmptyState
                 icon={<Link2 className="h-8 w-8" />}
-                title="아직 링크가 없어요"
-                description="자주 방문하는 사이트를 이 폴더에 모아보세요."
+                title={t("folder.noLinks")}
+                description={t("folder.noLinksBody")}
                 action={
                   <Button onClick={() => setIsCreateOpen(true)}>
                     <Plus className="h-4 w-4" />
-                    첫 링크 저장하기
+                    {t("folder.firstLink")}
                   </Button>
                 }
               />
@@ -379,12 +458,14 @@ export function FolderDetailPage() {
                 if (sort !== "custom") handleSortChange("custom");
                 void reorderLinksMutation.mutateAsync(orderedIds).catch((error) => {
                   const message =
-                    error instanceof ApiRequestError ? error.message : "순서를 저장하지 못했습니다.";
+                    error instanceof ApiRequestError ? error.message : t("folder.reorderFailed");
                   toast.error(message);
                 });
               }}
               onEdit={setEditingLink}
               onDelete={setDeletingLink}
+              showCreator={isShared}
+              view={linkView}
             />
           )}
         </section>
@@ -409,8 +490,8 @@ export function FolderDetailPage() {
 
       <ConfirmDialog
         open={Boolean(deletingLink)}
-        title="링크를 삭제할까요?"
-        description={`'${deletingLink?.title}' 링크가 삭제됩니다.`}
+        title={t("link.deleteTitle")}
+        description={t("link.deleteBody", { name: deletingLink?.title ?? "" })}
         isLoading={deleteLinkMutation.isPending}
         onConfirm={handleDeleteLink}
         onClose={() => setDeletingLink(null)}
@@ -424,10 +505,17 @@ export function FolderDetailPage() {
         initialFolder={folder}
       />
 
+      <InviteFolderModal
+        open={isInviteOpen}
+        folderId={folder.id}
+        folderName={folder.name}
+        onClose={() => setIsInviteOpen(false)}
+      />
+
       <ConfirmDialog
         open={isFolderDeleteOpen}
-        title="폴더를 삭제할까요?"
-        description={`'${folder.name}' 폴더와 저장된 모든 링크가 함께 삭제됩니다.`}
+        title={t("dash.deleteTitle")}
+        description={t("dash.deleteBody", { name: folder.name })}
         isLoading={deleteFolderMutation.isPending}
         onConfirm={handleDeleteFolder}
         onClose={() => setIsFolderDeleteOpen(false)}

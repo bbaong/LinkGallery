@@ -1,8 +1,28 @@
 import { linkRepository } from "./link.repository";
 import { folderRepository } from "../folders/folder.repository";
+import { requireFolderMember } from "../folders/folder.service";
 import { normalizeUrl } from "./link.util";
+import { fetchLinkPreviewImage } from "./link.preview";
 import type { CreateLinkInput, ReorderLinksInput, UpdateLinkInput } from "./link.schema";
 import { ApiError } from "../../shared/ApiError";
+
+type LinkWithCreator = Awaited<ReturnType<typeof linkRepository.findManyByFolder>>[number];
+
+function toLinkDto(link: LinkWithCreator) {
+  const { user, ...rest } = link;
+  return {
+    ...rest,
+    createdBy: user
+      ? {
+          id: user.id,
+          nickname: user.nickname,
+          avatarUrl: user.avatarUrl,
+          avatarType: user.avatarType,
+          avatarValue: user.avatarValue,
+        }
+      : null,
+  };
+}
 
 function isUniqueConstraintError(error: unknown, field: string) {
   if (!error || typeof error !== "object") return false;
@@ -14,29 +34,38 @@ function isUniqueConstraintError(error: unknown, field: string) {
   return false;
 }
 
-async function assertFolderOwnership(userId: string, folderId: string) {
-  const folder = await folderRepository.findByIdAndUser(folderId, userId);
-  if (!folder) {
-    throw ApiError.notFound("폴더를 찾을 수 없습니다.");
+async function requireLinkFolderAccess(userId: string, linkId: string) {
+  const existing = await linkRepository.findById(linkId);
+  if (!existing) {
+    throw ApiError.notFound("링크를 찾을 수 없습니다.");
   }
+  await requireFolderMember(userId, existing.folderId);
+  return existing;
+}
+
+async function accessibleFolderIds(userId: string) {
+  const folders = await folderRepository.findAccessibleFolderIds(userId);
+  return folders.map((folder) => folder.id);
 }
 
 export const linkService = {
   async listByFolder(userId: string, folderId: string, search?: string) {
-    await assertFolderOwnership(userId, folderId);
-    return linkRepository.findManyByFolder(userId, folderId, search);
+    await requireFolderMember(userId, folderId);
+    return (await linkRepository.findManyByFolder(folderId, search)).map(toLinkDto);
   },
 
   async listRecent(userId: string, limit = 12) {
-    return linkRepository.findRecentByUser(userId, limit);
+    const folderIds = await accessibleFolderIds(userId);
+    return linkRepository.findRecentByFolderIds(folderIds, limit);
   },
 
   async listAll(userId: string, limit = 200) {
-    return linkRepository.findManyByUser(userId, limit);
+    const folderIds = await accessibleFolderIds(userId);
+    return linkRepository.findManyByFolderIds(folderIds, limit);
   },
 
   async createLink(userId: string, input: CreateLinkInput) {
-    await assertFolderOwnership(userId, input.folderId);
+    await requireFolderMember(userId, input.folderId);
 
     const normalized = normalizeUrl(input.url);
     const title = input.title && input.title.length > 0 ? input.title : normalized.domain;
@@ -48,7 +77,7 @@ export const linkService = {
 
     const count = await linkRepository.countByFolder(input.folderId);
     try {
-      return await linkRepository.create(
+      const created = await linkRepository.create(
         userId,
         input.folderId,
         normalized,
@@ -57,6 +86,9 @@ export const linkService = {
         count,
         input.category ?? null
       );
+      const previewImageUrl = await fetchLinkPreviewImage(normalized.url);
+      if (!previewImageUrl) return toLinkDto(created);
+      return toLinkDto(await linkRepository.update(created.id, { previewImageUrl }));
     } catch (error) {
       if (isUniqueConstraintError(error, "urlHash")) {
         throw ApiError.conflict("이미 저장된 URL입니다.");
@@ -66,15 +98,13 @@ export const linkService = {
   },
 
   async updateLink(userId: string, linkId: string, input: UpdateLinkInput) {
-    const existing = await linkRepository.findByIdAndUser(linkId, userId);
-    if (!existing) {
-      throw ApiError.notFound("링크를 찾을 수 없습니다.");
-    }
+    const existing = await requireLinkFolderAccess(userId, linkId);
 
     const data: {
       url?: string;
       urlHash?: string;
       faviconUrl?: string;
+      previewImageUrl?: string | null;
       title?: string;
       description?: string;
       category?: string | null;
@@ -89,6 +119,7 @@ export const linkService = {
       data.url = normalized.url;
       data.urlHash = normalized.urlHash;
       data.faviconUrl = normalized.faviconUrl;
+      data.previewImageUrl = await fetchLinkPreviewImage(normalized.url);
 
       if (input.title !== undefined) {
         data.title = input.title.length > 0 ? input.title : normalized.domain;
@@ -106,7 +137,7 @@ export const linkService = {
     }
 
     try {
-      return await linkRepository.update(linkId, data);
+      return toLinkDto(await linkRepository.update(linkId, data));
     } catch (error) {
       if (isUniqueConstraintError(error, "urlHash")) {
         throw ApiError.conflict("이미 저장된 URL입니다.");
@@ -116,16 +147,19 @@ export const linkService = {
   },
 
   async recordVisit(userId: string, linkId: string) {
-    const existing = await linkRepository.findByIdAndUser(linkId, userId);
-    if (!existing) {
-      throw ApiError.notFound("링크를 찾을 수 없습니다.");
-    }
+    await requireLinkFolderAccess(userId, linkId);
     return linkRepository.markVisited(linkId);
   },
 
+  async refreshPreview(userId: string, linkId: string) {
+    const existing = await requireLinkFolderAccess(userId, linkId);
+    const previewImageUrl = await fetchLinkPreviewImage(existing.url);
+    return toLinkDto(await linkRepository.update(linkId, { previewImageUrl }));
+  },
+
   async reorderLinks(userId: string, input: ReorderLinksInput) {
-    await assertFolderOwnership(userId, input.folderId);
-    const links = await linkRepository.findManyByFolder(userId, input.folderId);
+    await requireFolderMember(userId, input.folderId);
+    const links = await linkRepository.findManyByFolder(input.folderId);
     const currentIds = new Set(links.map((link) => link.id));
 
     if (
@@ -137,14 +171,11 @@ export const linkService = {
     }
 
     await linkRepository.updatePositions(input.orderedIds.map((id, position) => ({ id, position })));
-    return linkRepository.findManyByFolder(userId, input.folderId);
+    return (await linkRepository.findManyByFolder(input.folderId)).map(toLinkDto);
   },
 
   async deleteLink(userId: string, linkId: string) {
-    const existing = await linkRepository.findByIdAndUser(linkId, userId);
-    if (!existing) {
-      throw ApiError.notFound("링크를 찾을 수 없습니다.");
-    }
+    await requireLinkFolderAccess(userId, linkId);
     await linkRepository.delete(linkId);
   },
 };

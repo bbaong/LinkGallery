@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "../lib/cn";
+import { useT } from "../i18n/useT";
 
 interface ModalProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, className, scrollable = true, aside }: ModalProps) {
+  const { t } = useT();
   useEffect(() => {
     if (!open) return;
 
@@ -37,7 +39,7 @@ export function Modal({ open, onClose, title, children, className, scrollable = 
     <div className="fixed inset-0 z-50 p-4">
       <button
         type="button"
-        aria-label="닫기"
+        aria-label={t("common.close")}
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -60,7 +62,7 @@ export function Modal({ open, onClose, title, children, className, scrollable = 
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="닫기"
+                aria-label={t("common.close")}
                 className="rounded-full p-2 text-ink-soft hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
                 <X className="h-5 w-5" />

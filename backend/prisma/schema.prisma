@@ -19,6 +19,11 @@ enum AuthProvider {
   GOOGLE
 }
 
+enum FolderMemberRole {
+  OWNER
+  EDITOR
+}
+
 model User {
   id           String       @id @default(uuid())
   username     String       @unique
@@ -26,12 +31,17 @@ model User {
   passwordHash String?
   nickname     String
   avatarUrl    String?
+  avatarType   CoverType?
+  avatarValue  String?      @db.VarChar(2048)
+  bannerType   CoverType    @default(GRADIENT)
+  bannerValue  String       @default("#C6B3FF|#6427C8") @db.VarChar(2048)
   googleId     String?      @unique
   provider     AuthProvider @default(LOCAL)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
   folders Folder[]
+  folderMemberships FolderMember[]
   links   Link[]
 }
 
@@ -43,12 +53,28 @@ model Folder {
   coverType  CoverType @default(GRADIENT)
   coverValue String
   position   Int       @default(0)
+  inviteCode String?   @unique @db.VarChar(6)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  links Link[]
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links   Link[]
+  members FolderMember[]
 
+  @@index([userId])
+}
+
+model FolderMember {
+  id       String           @id @default(uuid())
+  folderId String
+  userId   String
+  role     FolderMemberRole
+  joinedAt DateTime         @default(now())
+
+  folder Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([folderId, userId])
   @@index([userId])
 }
 
@@ -60,7 +86,8 @@ model Link {
   url         String   @db.VarChar(2048)
   urlHash     String   @db.Char(64)
   description String?  @db.Text
-  faviconUrl  String?   @db.VarChar(512)
+  faviconUrl      String?   @db.VarChar(512)
+  previewImageUrl String?   @db.VarChar(1024)
   position    Int       @default(0)
   lastVisitedAt DateTime?
   category      String?   @db.VarChar(30)

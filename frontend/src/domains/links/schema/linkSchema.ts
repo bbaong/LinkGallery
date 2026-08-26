@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tErr } from "../../../shared/i18n/useT";
 
 function sanitizeUrlInput(value: string) {
   return value.replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/\s+/g, "").trim();
@@ -22,13 +23,13 @@ export const linkFormSchema = z.object({
     .pipe(
       z
         .string()
-        .min(1, "URL을 입력해주세요.")
-        .max(2048, "URL이 너무 깁니다.")
-        .refine(isValidUrl, "올바른 URL 형식이 아닙니다.")
+        .min(1, tErr("validation.urlRequired"))
+        .max(2048, tErr("validation.urlMax"))
+        .refine(isValidUrl, tErr("validation.urlInvalid"))
     ),
-  title: z.string().trim().max(100, "제목은 100자 이내로 입력해주세요.").optional(),
-  description: z.string().trim().max(500, "설명은 500자 이내로 입력해주세요.").optional(),
-  category: z.string().trim().max(20, "카테고리는 20자 이내로 입력해주세요.").optional(),
+  title: z.string().trim().max(100, tErr("validation.titleMax")).optional(),
+  description: z.string().trim().max(500, tErr("validation.descriptionMax")).optional(),
+  category: z.string().trim().max(20, tErr("validation.categoryMax")).optional(),
 });
 
 export type LinkFormValues = z.infer<typeof linkFormSchema>;

@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { cn } from "../../../shared/lib/cn";
 import { Input } from "../../../shared/ui/Input";
 import { Field } from "../../../shared/ui/Field";
+import { useT } from "../../../shared/i18n/useT";
 
 const CATEGORY_MAX_LENGTH = 20;
 
@@ -19,6 +20,7 @@ interface LinkCategoryFieldProps {
 
 export function LinkCategoryField({ value, onChange, options, error }: LinkCategoryFieldProps) {
   const [draft, setDraft] = useState("");
+  const { t } = useT();
 
   const chips = [...new Set([value, ...options].filter(Boolean))];
 
@@ -32,11 +34,11 @@ export function LinkCategoryField({ value, onChange, options, error }: LinkCateg
 
   return (
     <Field
-      label="카테고리"
+      label={t("common.category")}
       htmlFor="link-category"
       optional
       error={error}
-      hint="맛집, 놀거리처럼 붙여두면 폴더에서 골라볼 수 있어요."
+      hint={t("link.categoryHint")}
     >
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap gap-2">
@@ -50,7 +52,7 @@ export function LinkCategoryField({ value, onChange, options, error }: LinkCateg
                 : "border border-line bg-surface text-ink-soft hover:bg-canvas"
             )}
           >
-            없음
+            {t("link.none")}
           </button>
           {chips.map((name) => (
             <button
@@ -73,7 +75,7 @@ export function LinkCategoryField({ value, onChange, options, error }: LinkCateg
             id="link-category"
             value={draft}
             maxLength={CATEGORY_MAX_LENGTH}
-            placeholder="새 카테고리 이름"
+            placeholder={t("link.newCategory")}
             hasError={Boolean(error)}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -89,7 +91,7 @@ export function LinkCategoryField({ value, onChange, options, error }: LinkCateg
             className="inline-flex h-11 shrink-0 items-center gap-1 rounded-2xl border border-line bg-surface px-3 text-sm font-medium text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
-            추가
+            {t("link.add")}
           </button>
         </div>
       </div>

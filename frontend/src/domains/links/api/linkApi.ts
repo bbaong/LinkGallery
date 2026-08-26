@@ -57,6 +57,11 @@ export const linkApi = {
     return res.data.data;
   },
 
+  async refreshPreview(linkId: string) {
+    const res = await apiClient.post<ApiSuccessResponse<Link>>(`/links/${linkId}/preview`);
+    return res.data.data;
+  },
+
   async remove(linkId: string) {
     await apiClient.delete(`/links/${linkId}`);
   },

@@ -1,7 +1,22 @@
 import { apiClient } from "../../../shared/api/client";
 import type { ApiSuccessResponse } from "../../../shared/api/types";
 import type { User } from "../types";
-import type { LoginFormValues, SignupFormValues, UpdateEmailFormValues } from "../schema/authSchema";
+import type { LoginFormValues, SignupFormValues } from "../schema/authSchema";
+
+export type UpdateProfileInput = {
+  nickname?: string;
+  email?: string;
+  avatarUrl?: string | null;
+  avatarType?: "SOLID" | "GRADIENT" | "IMAGE" | null;
+  avatarValue?: string | null;
+  bannerType?: "SOLID" | "GRADIENT" | "IMAGE";
+  bannerValue?: string;
+};
+
+export interface UploadedAvatar {
+  url: string;
+  key: string;
+}
 
 export const authApi = {
   async signup(input: SignupFormValues) {
@@ -35,8 +50,44 @@ export const authApi = {
     return res.data.data;
   },
 
-  async updateProfile(input: UpdateEmailFormValues) {
+  async updateProfile(input: UpdateProfileInput) {
     const res = await apiClient.patch<ApiSuccessResponse<User>>("/auth/me", input);
     return res.data.data;
+  },
+
+  async uploadAvatar(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiClient.post<ApiSuccessResponse<UploadedAvatar>>("/uploads/avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data.data;
+  },
+
+  async uploadBanner(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiClient.post<ApiSuccessResponse<UploadedAvatar>>("/uploads/banner", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data.data;
+  },
+
+  async changePassword(input: {
+    username: string;
+    currentPassword: string;
+    password: string;
+    passwordConfirm: string;
+  }) {
+    await apiClient.post("/auth/me/password", input);
+  },
+
+  async resetWorkspace(input: { username: string }) {
+    const res = await apiClient.post<ApiSuccessResponse<User>>("/auth/me/reset", input);
+    return res.data.data;
+  },
+
+  async deleteAccount(input: { username: string; currentPassword?: string }) {
+    await apiClient.delete("/auth/me", { data: input });
   },
 };

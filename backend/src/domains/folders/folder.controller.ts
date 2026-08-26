@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { folderService } from "./folder.service";
-import { createFolderSchema, updateFolderSchema } from "./folder.schema";
+import { createFolderSchema, joinFolderSchema, updateFolderSchema } from "./folder.schema";
 import { linkService } from "../links/link.service";
 import { listLinksQuerySchema } from "../links/link.schema";
 import { sendSuccess } from "../../shared/response";
@@ -42,5 +42,23 @@ export const folderController = {
     const query = listLinksQuerySchema.parse(req.query);
     const links = await linkService.listByFolder(req.userId!, folderId, query.search);
     sendSuccess(res, links, "링크 목록을 조회했습니다.");
+  },
+
+  async getOrCreateInvite(req: Request, res: Response) {
+    const folderId = requireParam(req.params, "folderId");
+    const invite = await folderService.getOrCreateInviteCode(req.userId!, folderId);
+    sendSuccess(res, invite, "초대 코드를 준비했습니다.");
+  },
+
+  async regenerateInvite(req: Request, res: Response) {
+    const folderId = requireParam(req.params, "folderId");
+    const invite = await folderService.regenerateInviteCode(req.userId!, folderId);
+    sendSuccess(res, invite, "초대 코드를 새로 만들었습니다.");
+  },
+
+  async join(req: Request, res: Response) {
+    const input = joinFolderSchema.parse(req.body);
+    const folder = await folderService.joinByCode(req.userId!, input.code);
+    sendSuccess(res, folder, `${folder.name} 폴더에 참여했어요 🎉`);
   },
 };

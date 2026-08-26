@@ -12,14 +12,34 @@ export const uploadController = {
       throw ApiError.badRequest("업로드할 이미지를 선택해주세요.");
     }
 
-    const stored = await localImageStorageService.save(file);
+    const stored = await localImageStorageService.save(file, "folder-covers");
     sendSuccess(res, stored, "이미지가 업로드되었습니다.", 201);
+  },
+
+  async uploadAvatar(req: Request, res: Response) {
+    const file = req.file;
+    if (!file) {
+      throw ApiError.badRequest("업로드할 이미지를 선택해주세요.");
+    }
+
+    const stored = await localImageStorageService.save(file, "avatars");
+    sendSuccess(res, stored, "프로필 이미지가 업로드되었습니다.", 201);
+  },
+
+  async uploadBanner(req: Request, res: Response) {
+    const file = req.file;
+    if (!file) {
+      throw ApiError.badRequest("업로드할 이미지를 선택해주세요.");
+    }
+
+    const stored = await localImageStorageService.save(file, "banners");
+    sendSuccess(res, stored, "배너 이미지가 업로드되었습니다.", 201);
   },
 
   async deleteFolderCover(req: Request, res: Response) {
     const { url } = deleteFolderCoverSchema.parse(req.body);
     const key = path.basename(url);
-    await localImageStorageService.remove(key);
+    await localImageStorageService.remove(key, "folder-covers");
     sendSuccess(res, null, "이미지가 삭제되었습니다.");
   },
 };

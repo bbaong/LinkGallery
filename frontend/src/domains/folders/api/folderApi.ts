@@ -33,6 +33,25 @@ export const folderApi = {
     await apiClient.delete(`/folders/${folderId}`);
   },
 
+  async getOrCreateInvite(folderId: string) {
+    const res = await apiClient.post<ApiSuccessResponse<{ code: string; role: "EDITOR" }>>(
+      `/folders/${folderId}/invite`
+    );
+    return res.data.data;
+  },
+
+  async regenerateInvite(folderId: string) {
+    const res = await apiClient.post<ApiSuccessResponse<{ code: string; role: "EDITOR" }>>(
+      `/folders/${folderId}/invite/regenerate`
+    );
+    return res.data.data;
+  },
+
+  async join(code: string) {
+    const res = await apiClient.post<ApiSuccessResponse<Folder>>("/folders/join", { code });
+    return { folder: res.data.data, message: res.data.message };
+  },
+
   async uploadCover(file: File) {
     const formData = new FormData();
     formData.append("file", file);

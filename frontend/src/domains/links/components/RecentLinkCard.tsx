@@ -23,32 +23,28 @@ export function RecentLinkCard({ link, className }: { link: RecentLink; classNam
       rel="noopener noreferrer"
       onClick={() => visitMutation.mutate(link.id)}
       className={cn(
-        "flex w-64 shrink-0 flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
+        "w-40 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:w-44",
         className
       )}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-canvas">
-          {link.faviconUrl && !faviconError ? (
-            <img
-              src={link.faviconUrl}
-              alt=""
-              className="h-5 w-5"
-              onError={() => setFaviconError(true)}
-            />
-          ) : (
-            <Globe className="h-4 w-4 text-ink-soft" />
-          )}
-        </div>
-        <span className="truncate rounded-full bg-canvas px-2.5 py-1 text-xs text-ink-soft">
-          {link.folder.icon ? `${link.folder.icon} ` : ""}
-          {link.folder.name}
-        </span>
+      <div className="flex aspect-square items-center justify-center rounded-2xl bg-surface shadow-sm transition-transform duration-150 hover:scale-[1.02]">
+        {link.faviconUrl && !faviconError ? (
+          <img
+            src={link.faviconUrl}
+            alt=""
+            className="h-14 w-14"
+            onError={() => setFaviconError(true)}
+          />
+        ) : (
+          <Globe className="h-12 w-12 text-ink-soft" />
+        )}
       </div>
-      <div>
-        <p className="truncate text-[15px] font-semibold text-ink">{link.title}</p>
-        <p className="truncate text-xs text-ink-soft/80">{getDomain(link.url)}</p>
-      </div>
+      <p className="mt-2.5 truncate text-[15px] font-semibold text-ink">{link.title}</p>
+      <p className="truncate text-sm text-ink-soft">
+        {link.folder.icon ? `${link.folder.icon} ` : ""}
+        {link.folder.name}
+      </p>
+      <p className="truncate text-xs text-ink-soft/70">{getDomain(link.url)}</p>
     </a>
   );
 }

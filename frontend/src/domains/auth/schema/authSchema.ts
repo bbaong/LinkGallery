@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tErr } from "../../../shared/i18n/useT";
 
 export const EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -6,27 +7,27 @@ export const usernameSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .min(4, "아이디는 4자 이상이어야 합니다.")
-  .max(20, "아이디는 20자 이내로 입력해주세요.")
-  .regex(/^[a-z][a-z0-9_]*$/, "아이디는 영문으로 시작하고, 영문·숫자·밑줄만 사용할 수 있습니다.");
+  .min(4, tErr("validation.usernameMin"))
+  .max(20, tErr("validation.usernameMax"))
+  .regex(/^[a-z][a-z0-9_]*$/, tErr("validation.usernamePattern"));
 
 const emailSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(EMAIL_PATTERN, "올바른 이메일 형식이 아닙니다.");
+  .regex(EMAIL_PATTERN, tErr("validation.email"));
 
 const passwordSchema = z
   .string()
-  .min(8, "비밀번호는 8자 이상이어야 합니다.")
-  .max(72, "비밀번호는 72자 이내로 입력해주세요.")
-  .regex(/[A-Za-z]/, "비밀번호에 영문을 포함해주세요.")
-  .regex(/\d/, "비밀번호에 숫자를 포함해주세요.")
-  .regex(/[^A-Za-z0-9]/, "비밀번호에 특수문자를 포함해주세요.");
+  .min(8, tErr("validation.passwordMin"))
+  .max(72, tErr("validation.passwordMax"))
+  .regex(/[A-Za-z]/, tErr("validation.passwordLetter"))
+  .regex(/\d/, tErr("validation.passwordNumber"))
+  .regex(/[^A-Za-z0-9]/, tErr("validation.passwordSpecial"));
 
 export const loginSchema = z.object({
   username: usernameSchema,
-  password: z.string().min(1, "비밀번호를 입력해주세요."),
+  password: z.string().min(1, tErr("validation.passwordRequired")),
 });
 
 export const signupSchema = z
@@ -35,13 +36,13 @@ export const signupSchema = z
     nickname: z
       .string()
       .trim()
-      .min(2, "닉네임은 2자 이상이어야 합니다.")
-      .max(20, "닉네임은 20자 이내로 입력해주세요."),
+      .min(2, tErr("validation.nicknameMin"))
+      .max(20, tErr("validation.nicknameMax")),
     password: passwordSchema,
-    passwordConfirm: z.string().min(1, "비밀번호 확인을 입력해주세요."),
+    passwordConfirm: z.string().min(1, tErr("validation.passwordConfirmRequired")),
   })
   .refine((data) => data.password === data.passwordConfirm, {
-    message: "비밀번호가 일치하지 않습니다.",
+    ...tErr("validation.passwordMismatch"),
     path: ["passwordConfirm"],
   });
 
@@ -49,6 +50,38 @@ export const updateEmailSchema = z.object({
   email: emailSchema,
 });
 
+export const updateProfileFormSchema = z.object({
+  nickname: z
+    .string()
+    .trim()
+    .min(2, tErr("validation.nicknameMin"))
+    .max(20, tErr("validation.nicknameMax")),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((value) => value.length === 0 || EMAIL_PATTERN.test(value), tErr("validation.email")),
+});
+
+export const changePasswordFormSchema = z
+  .object({
+    username: usernameSchema,
+    currentPassword: z.string().min(1, tErr("validation.currentPassword")),
+    password: passwordSchema,
+    passwordConfirm: z.string().min(1, tErr("validation.passwordConfirmRequired")),
+  })
+  .refine((data) => data.password === data.passwordConfirm, {
+    ...tErr("validation.passwordMismatch"),
+    path: ["passwordConfirm"],
+  });
+
+export const confirmUsernameFormSchema = z.object({
+  username: usernameSchema,
+});
+
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type SignupFormValues = z.infer<typeof signupSchema>;
 export type UpdateEmailFormValues = z.infer<typeof updateEmailSchema>;
+export type UpdateProfileFormValues = z.infer<typeof updateProfileFormSchema>;
+export type ChangePasswordFormValues = z.infer<typeof changePasswordFormSchema>;
+export type ConfirmUsernameFormValues = z.infer<typeof confirmUsernameFormSchema>;

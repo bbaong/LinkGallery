@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, Plus, Search, FolderHeart } from "lucide-react";
+import { Plus, Search, FolderHeart, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageContainer } from "../../../shared/ui/PageContainer";
 import { Logo } from "../../../shared/ui/Logo";
@@ -19,6 +19,7 @@ import { QuickLaunchEditModal } from "../../links/components/QuickLaunchEditModa
 import { loadQuickLaunchIds, saveQuickLaunchIds } from "../../links/lib/quickLaunch";
 import { FolderCard } from "../components/FolderCard";
 import { FolderFormModal } from "../components/FolderFormModal";
+import { JoinFolderModal } from "../components/JoinFolderModal";
 import { DashboardHero } from "../components/DashboardHero";
 import {
   useCreateFolderMutation,
@@ -28,17 +29,20 @@ import {
 } from "../hooks/useFolderQueries";
 import type { Folder } from "../types";
 import type { FolderFormValues } from "../schema/folderSchema";
+import { useT } from "../../../shared/i18n/useT";
 
 export function DashboardPage() {
+  const { t } = useT();
   const user = useAuthStore((state) => state.user);
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
-  const [showAllRecent, setShowAllRecent] = useState(false);
   const [isQuickLaunchOpen, setIsQuickLaunchOpen] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[] | null>(null);
+  const [scrolled, setScrolled] = useState(false);
 
   const foldersQuery = useFoldersQuery();
   const recentLinksQuery = useRecentLinksQuery(12);
@@ -56,11 +60,29 @@ export function DashboardPage() {
     setPinnedIds(loadQuickLaunchIds(user.id));
   }, [user?.id]);
 
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 8);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const filteredFolders = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     if (!keyword) return folders;
     return folders.filter((folder) => folder.name.toLowerCase().includes(keyword));
   }, [folders, search]);
+
+  const ownedFolders = useMemo(
+    () => filteredFolders.filter((folder) => folder.myRole === "OWNER"),
+    [filteredFolders]
+  );
+  const sharedFolders = useMemo(
+    () => filteredFolders.filter((folder) => folder.myRole !== "OWNER"),
+    [filteredFolders]
+  );
 
   const quickLaunchLinks = useMemo(() => {
     const byId = new Map(allLinks.map((link) => [link.id, link]));
@@ -76,10 +98,10 @@ export function DashboardPage() {
   async function handleCreateFolder(values: FolderFormValues) {
     try {
       await createFolderMutation.mutateAsync(values);
-      toast.success("폴더가 생성되었습니다.");
+      toast.success(t("dash.created"));
       setIsCreateOpen(false);
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "폴더 생성에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("dash.createFailed");
       toast.error(message);
     }
   }
@@ -89,10 +111,10 @@ export function DashboardPage() {
     setIsEditSubmitting(true);
     try {
       await updateFolderMutation.mutateAsync({ folderId: editingFolder.id, input: values });
-      toast.success("폴더가 수정되었습니다.");
+      toast.success(t("dash.updated"));
       setEditingFolder(null);
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "폴더 수정에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("dash.updateFailed");
       toast.error(message);
     } finally {
       setIsEditSubmitting(false);
@@ -103,10 +125,10 @@ export function DashboardPage() {
     if (!deletingFolder) return;
     try {
       await deleteFolderMutation.mutateAsync(deletingFolder.id);
-      toast.success("폴더가 삭제되었습니다.");
+      toast.success(t("dash.deleted"));
       setDeletingFolder(null);
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "폴더 삭제에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("dash.deleteFailed");
       toast.error(message);
     }
   }
@@ -115,21 +137,23 @@ export function DashboardPage() {
     if (!user?.id) return;
     saveQuickLaunchIds(user.id, ids);
     setPinnedIds(ids);
-    toast.success("빠른 실행을 저장했습니다.");
+    toast.success(t("dash.quickSaved"));
   }
 
-  const visibleRecent = showAllRecent ? recentLinks : recentLinks.slice(0, 5);
-
   return (
-    <div className="min-h-screen bg-canvas pb-20">
-      <header className="border-b border-line bg-canvas/80 backdrop-blur">
+    <div className="min-h-screen bg-canvas">
+      <header
+        className={`fixed inset-x-0 top-0 z-30 border-b bg-canvas/80 backdrop-blur-md transition-shadow duration-300 ${
+          scrolled ? "border-line shadow-sm" : "border-transparent"
+        }`}
+      >
         <PageContainer className="flex h-16 items-center justify-between">
-          <Logo />
+          <Logo to="/dashboard" />
           <UserMenu />
         </PageContainer>
       </header>
 
-      <PageContainer className="flex flex-col gap-10 pt-8">
+      <PageContainer className="flex flex-col gap-12 pt-28 pb-16">
         <DashboardHero
           nickname={user?.nickname ?? ""}
           folders={folders}
@@ -137,128 +161,136 @@ export function DashboardPage() {
         />
 
         <section>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-ink">최근 접속한 사이트</h2>
-            {recentLinks.length > 5 ? (
-              <button
-                type="button"
-                onClick={() => setShowAllRecent((current) => !current)}
-                className="inline-flex items-center text-sm text-ink-soft transition-colors hover:text-ink"
-              >
-                {showAllRecent ? "접기" : "전체 보기"}
-                <ChevronRight className={`h-4 w-4 ${showAllRecent ? "rotate-90" : ""}`} />
-              </button>
-            ) : null}
-          </div>
-          {recentLinks.length > 0 ? (
-            showAllRecent ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {visibleRecent.map((link) => (
-                  <RecentLinkCard key={link.id} link={link} className="w-full" />
-                ))}
-              </div>
-            ) : (
-              <div className="flex gap-4 overflow-x-auto pb-2">
-                {visibleRecent.map((link) => (
-                  <RecentLinkCard key={link.id} link={link} />
-                ))}
-              </div>
-            )
-          ) : (
-            <div className="flex min-h-[7.25rem] items-center rounded-2xl border border-dashed border-line px-5">
-              <p className="text-sm text-ink-soft">아직 기록이 없습니다</p>
-            </div>
-          )}
-        </section>
-
-        <section>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-ink">빠른 실행</h2>
-            <button
-              type="button"
-              onClick={() => setIsQuickLaunchOpen(true)}
-              className="inline-flex items-center text-sm text-ink-soft transition-colors hover:text-ink"
-            >
-              편집
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          {quickLaunchLinks.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {quickLaunchLinks.map((link) => (
-                <QuickLaunchItem key={link.id} link={link} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex min-h-[4.5rem] items-center justify-between gap-3 rounded-2xl border border-dashed border-line px-5">
-              <p className="text-sm text-ink-soft">자주 여는 사이트를 여기에 모아 두세요.</p>
-              <Button variant="secondary" size="sm" onClick={() => setIsQuickLaunchOpen(true)}>
-                추가
-              </Button>
-            </div>
-          )}
-        </section>
-
-        <section>
-          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-ink">내 폴더</h2>
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <h2 className="text-2xl font-bold tracking-tight text-ink">{t("dash.myFolders")}</h2>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="폴더 검색"
+                  placeholder={t("dash.searchFolders")}
                   className="w-full pl-10 sm:w-56"
-                  aria-label="폴더 검색"
+                  aria-label={t("dash.searchFolders")}
                 />
               </div>
+              <Button variant="secondary" onClick={() => setIsJoinOpen(true)}>
+                <Users className="h-4 w-4" />
+                {t("dash.joinWithCode")}
+              </Button>
               <Button onClick={() => setIsCreateOpen(true)}>
                 <Plus className="h-4 w-4" />
-                새 폴더
+                {t("dash.newFolder")}
               </Button>
             </div>
           </div>
 
           {foldersQuery.isLoading ? (
-            <Spinner label="폴더를 불러오는 중..." />
-          ) : filteredFolders.length === 0 ? (
+            <Spinner label={t("dash.loadingFolders")} />
+          ) : ownedFolders.length === 0 && sharedFolders.length === 0 ? (
             search ? (
               <EmptyState
                 icon={<Search className="h-8 w-8" />}
-                title="검색 결과가 없어요"
-                description={`'${search}'와 일치하는 폴더를 찾을 수 없습니다.`}
+                title={t("dash.searchEmpty")}
+                description={t("dash.searchEmptyBody", { query: search })}
               />
             ) : (
               <EmptyState
                 icon={<FolderHeart className="h-8 w-8" />}
-                title="아직 폴더가 없어요"
-                description="새 폴더를 만들고 좋아하는 링크를 모아보세요."
+                title={t("dash.emptyTitle")}
+                description={t("dash.noFoldersBody")}
                 action={
-                  <Button onClick={() => setIsCreateOpen(true)}>
-                    <Plus className="h-4 w-4" />
-                    첫 폴더 만들기
-                  </Button>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button variant="secondary" onClick={() => setIsJoinOpen(true)}>
+                      <Users className="h-4 w-4" />
+                      {t("dash.joinWithCode")}
+                    </Button>
+                    <Button onClick={() => setIsCreateOpen(true)}>
+                      <Plus className="h-4 w-4" />
+                      {t("dash.firstFolder")}
+                    </Button>
+                  </div>
                 }
               />
             )
           ) : (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-              {filteredFolders.map((folder) => (
-                <FolderCard
-                  key={folder.id}
-                  folder={folder}
-                  onEdit={setEditingFolder}
-                  onDelete={setDeletingFolder}
-                />
+            <>
+              {ownedFolders.length > 0 ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+                  {ownedFolders.map((folder) => (
+                    <FolderCard
+                      key={folder.id}
+                      folder={folder}
+                      onEdit={setEditingFolder}
+                      onDelete={setDeletingFolder}
+                    />
+                  ))}
+                </div>
+              ) : search ? null : (
+                <p className="py-6 text-sm text-ink-soft">{t("dash.noOwned")}</p>
+              )}
+
+              {sharedFolders.length > 0 ? (
+                <div className="mt-10">
+                  <h3 className="mb-4 text-lg font-semibold tracking-tight text-ink">{t("dash.sharedFolders")}</h3>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+                    {sharedFolders.map((folder) => (
+                      <FolderCard key={folder.id} folder={folder} />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-2xl font-bold tracking-tight text-ink">{t("dash.recentSites")}</h2>
+          {recentLinks.length > 0 ? (
+            <div className="-mx-1 flex gap-5 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {recentLinks.map((link) => (
+                <RecentLinkCard key={link.id} link={link} />
               ))}
             </div>
+          ) : (
+            <p className="py-8 text-sm text-ink-soft">{t("dash.noRecent")}</p>
+          )}
+        </section>
+
+        <section>
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="text-2xl font-bold tracking-tight text-ink">{t("dash.quickLaunch")}</h2>
+            <button
+              type="button"
+              onClick={() => setIsQuickLaunchOpen(true)}
+              className="text-sm font-medium text-brand-600 hover:text-brand-700"
+            >
+              {t("common.edit")}
+            </button>
+          </div>
+          {quickLaunchLinks.length > 0 ? (
+            <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {quickLaunchLinks.map((link) => (
+                <QuickLaunchItem key={link.id} link={link} />
+              ))}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsQuickLaunchOpen(true)}
+              className="py-8 text-left text-sm text-ink-soft hover:text-ink"
+            >
+              {t("dash.quickEmpty")}
+            </button>
           )}
         </section>
       </PageContainer>
 
-      <footer className="mt-16 text-center text-sm text-ink-soft">
-        {APP_NAME} — 나만의 시작 페이지
+      <footer className="border-t border-line py-8">
+        <PageContainer className="flex flex-col items-center justify-between gap-3 text-sm text-ink-soft sm:flex-row">
+          <Logo to="/dashboard" />
+          <p className="break-keep">{t("dash.footerTag", { name: APP_NAME })}</p>
+        </PageContainer>
       </footer>
 
       <FolderFormModal
@@ -267,6 +299,8 @@ export function DashboardPage() {
         onSubmit={handleCreateFolder}
         isSubmitting={createFolderMutation.isPending}
       />
+
+      <JoinFolderModal open={isJoinOpen} onClose={() => setIsJoinOpen(false)} />
 
       <FolderFormModal
         open={Boolean(editingFolder)}
@@ -278,8 +312,8 @@ export function DashboardPage() {
 
       <ConfirmDialog
         open={Boolean(deletingFolder)}
-        title="폴더를 삭제할까요?"
-        description={`'${deletingFolder?.name}' 폴더와 저장된 모든 링크가 함께 삭제됩니다.`}
+        title={t("dash.deleteTitle")}
+        description={t("dash.deleteBody", { name: deletingFolder?.name ?? "" })}
         isLoading={deleteFolderMutation.isPending}
         onConfirm={handleDeleteFolder}
         onClose={() => setDeletingFolder(null)}

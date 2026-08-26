@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useT } from "../i18n/useT";
 
 interface FieldProps {
   label: string;
@@ -11,11 +12,13 @@ interface FieldProps {
 }
 
 export function Field({ label, htmlFor, error, hint, success, optional, children }: FieldProps) {
+  const { t } = useT();
+
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={htmlFor} className="text-sm font-medium text-ink">
         {label}
-        {optional ? <span className="ml-1 font-normal text-ink-soft">선택</span> : null}
+        {optional ? <span className="ml-1 font-normal text-ink-soft">{t("common.optional")}</span> : null}
       </label>
       {children}
       {error ? (

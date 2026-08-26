@@ -4,6 +4,7 @@ import { Button } from "../../../shared/ui/Button";
 import { ApiRequestError } from "../../../shared/api/client";
 import { signInWithGooglePopup } from "../lib/firebase";
 import { useGoogleLoginMutation } from "../hooks/useAuthQueries";
+import { useT } from "../../../shared/i18n/useT";
 
 interface GoogleLoginButtonProps {
   onSuccess: () => void;
@@ -12,13 +13,14 @@ interface GoogleLoginButtonProps {
 export function GoogleLoginButton({ onSuccess }: GoogleLoginButtonProps) {
   const googleLoginMutation = useGoogleLoginMutation();
   const [isPopupPending, setIsPopupPending] = useState(false);
+  const { t } = useT();
 
   async function handleClick() {
     setIsPopupPending(true);
     try {
       const idToken = await signInWithGooglePopup();
       await googleLoginMutation.mutateAsync({ idToken });
-      toast.success("Google 로그인되었습니다.");
+      toast.success(t("auth.googleOk"));
       onSuccess();
     } catch (error) {
       if (error && typeof error === "object" && "code" in error) {
@@ -32,7 +34,7 @@ export function GoogleLoginButton({ onSuccess }: GoogleLoginButtonProps) {
           ? error.message
           : error instanceof Error
             ? error.message
-            : "Google 로그인에 실패했습니다.";
+            : t("auth.googleFailed");
       toast.error(message);
     } finally {
       setIsPopupPending(false);
@@ -48,7 +50,7 @@ export function GoogleLoginButton({ onSuccess }: GoogleLoginButtonProps) {
       isLoading={isPopupPending || googleLoginMutation.isPending}
     >
       <GoogleIcon />
-      Google로 계속하기
+      {t("auth.continueGoogle")}
     </Button>
   );
 }

@@ -21,7 +21,7 @@ export function QuickLaunchItem({ link }: { link: RecentLink }) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => visitMutation.mutate(link.id)}
-      className="flex min-w-0 items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+      className="flex w-52 shrink-0 items-center gap-3 rounded-2xl bg-surface px-3 py-2.5 shadow-sm transition-transform duration-150 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-canvas">
         {link.faviconUrl && !faviconError ? (

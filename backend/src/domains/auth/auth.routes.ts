@@ -13,5 +13,8 @@ router.post("/logout", asyncHandler(authController.logout));
 router.get("/username-available", authRateLimiter, asyncHandler(authController.checkUsername));
 router.get("/me", requireAuth, asyncHandler(authController.me));
 router.patch("/me", requireAuth, asyncHandler(authController.updateProfile));
+router.post("/me/password", requireAuth, authRateLimiter, asyncHandler(authController.changePassword));
+router.post("/me/reset", requireAuth, authRateLimiter, asyncHandler(authController.resetWorkspace));
+router.delete("/me", requireAuth, authRateLimiter, asyncHandler(authController.deleteAccount));
 
 export default router;

@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { cn } from "../../../shared/lib/cn";
 import { Input } from "../../../shared/ui/Input";
 import { recommendEmojis, searchEmojis, takeEmojiInput } from "../constants/emojiCatalog";
+import { useT } from "../../../shared/i18n/useT";
 
 interface EmojiPickerFieldProps {
   value: string;
@@ -12,6 +13,7 @@ interface EmojiPickerFieldProps {
 
 export function EmojiPickerField({ value, folderName, onChange }: EmojiPickerFieldProps) {
   const [query, setQuery] = useState("");
+  const { t } = useT();
 
   const visibleItems = useMemo(() => {
     const list = query.trim() ? searchEmojis(query) : recommendEmojis(folderName);
@@ -31,8 +33,8 @@ export function EmojiPickerField({ value, folderName, onChange }: EmojiPickerFie
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-ink">아이콘</p>
-        <span className="text-xs text-ink-soft">아무 이모지나 붙여넣기</span>
+        <p className="text-sm font-medium text-ink">{t("folder.icon")}</p>
+        <span className="text-xs text-ink-soft">{t("folder.iconPaste")}</span>
       </div>
 
       <div className="flex gap-2">
@@ -40,8 +42,8 @@ export function EmojiPickerField({ value, folderName, onChange }: EmojiPickerFie
           type="button"
           onClick={() => onChange("")}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-line bg-canvas text-xl"
-          aria-label="선택한 아이콘"
-          title="클릭하면 아이콘을 지울 수 있어요"
+          aria-label={t("folder.iconSelected")}
+          title={t("folder.iconClear")}
         >
           {value || "＋"}
         </button>
@@ -50,16 +52,16 @@ export function EmojiPickerField({ value, folderName, onChange }: EmojiPickerFie
           <Input
             value={query}
             onChange={(event) => handleQueryChange(event.target.value)}
-            placeholder="피자, 여행… 또는 이모지 붙여넣기"
+            placeholder={t("folder.emojiPlaceholder")}
             className="pl-10"
-            aria-label="이모지 검색"
+            aria-label={t("folder.emojiSearch")}
           />
         </div>
       </div>
 
       <div className="flex h-10 items-center gap-1">
         {visibleItems.length === 0 ? (
-          <p className="px-1 text-xs text-ink-soft">검색 결과가 없어요. 이모지를 바로 붙여넣어도 됩니다.</p>
+          <p className="px-1 text-xs text-ink-soft">{t("folder.emojiEmpty")}</p>
         ) : (
           visibleItems.map((item) => (
             <button

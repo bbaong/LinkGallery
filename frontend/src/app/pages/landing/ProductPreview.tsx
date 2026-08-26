@@ -3,14 +3,16 @@ import { Globe } from "lucide-react";
 import { FolderCover } from "../../../domains/folders/components/FolderCover";
 import { cn } from "../../../shared/lib/cn";
 import type { CoverType } from "../../../domains/folders/types";
+import { useT } from "../../../shared/i18n/useT";
+import type { MessageKey } from "../../../shared/i18n/messages";
 
 interface DemoLink {
-  title: string;
-  note: string;
+  titleKey: MessageKey;
+  noteKey: MessageKey;
 }
 
 interface DemoFolder {
-  name: string;
+  nameKey: MessageKey;
   icon: string;
   coverType: CoverType;
   coverValue: string;
@@ -19,55 +21,57 @@ interface DemoFolder {
 
 const DEMO_FOLDERS: DemoFolder[] = [
   {
-    name: "디자인 영감",
+    nameKey: "landing.demo1Name",
     icon: "🎨",
     coverType: "GRADIENT",
     coverValue: "LAVENDER",
     links: [
-      { title: "오늘의 무드", note: "색과 레이아웃 모음" },
-      { title: "컬러 노트", note: "마음에 든 팔레트" },
-      { title: "레이아웃 스크랩", note: "나중에 다시 볼 화면" },
+      { titleKey: "landing.demo1L1", noteKey: "landing.demo1N1" },
+      { titleKey: "landing.demo1L2", noteKey: "landing.demo1N2" },
+      { titleKey: "landing.demo1L3", noteKey: "landing.demo1N3" },
     ],
   },
   {
-    name: "취업 준비",
+    nameKey: "landing.demo2Name",
     icon: "⭐",
     coverType: "GRADIENT",
     coverValue: "PEACH",
     links: [
-      { title: "공고 모아보기", note: "이번 주 지원할 곳" },
-      { title: "포트폴리오", note: "제출용 자료" },
-      { title: "면접 메모", note: "질문과 답변 정리" },
+      { titleKey: "landing.demo2L1", noteKey: "landing.demo2N1" },
+      { titleKey: "landing.demo2L2", noteKey: "landing.demo2N2" },
+      { titleKey: "landing.demo2L3", noteKey: "landing.demo2N3" },
     ],
   },
   {
-    name: "위시리스트",
+    nameKey: "landing.demo3Name",
     icon: "✨",
     coverType: "GRADIENT",
     coverValue: "SKY",
     links: [
-      { title: "사고 싶은 것", note: "나중에 살 목록" },
-      { title: "비교해 둔 옵션", note: "아직 고르는 중" },
-      { title: "선물 아이디어", note: "챙겨 둘 링크" },
+      { titleKey: "landing.demo3L1", noteKey: "landing.demo3N1" },
+      { titleKey: "landing.demo3L2", noteKey: "landing.demo3N2" },
+      { titleKey: "landing.demo3L3", noteKey: "landing.demo3N3" },
     ],
   },
   {
-    name: "여행 준비",
+    nameKey: "landing.demo4Name",
     icon: "✈️",
     coverType: "GRADIENT",
     coverValue: "MINT",
     links: [
-      { title: "가고 싶은 곳", note: "지도에 찍어 둔 장소" },
-      { title: "숙소 메모", note: "분위기 보고 저장" },
-      { title: "루트 스케치", note: "대략의 동선" },
+      { titleKey: "landing.demo4L1", noteKey: "landing.demo4N1" },
+      { titleKey: "landing.demo4L2", noteKey: "landing.demo4N2" },
+      { titleKey: "landing.demo4L3", noteKey: "landing.demo4N3" },
     ],
   },
 ];
 
 export function ProductPreview() {
+  const { t } = useT();
   const [activeIndex, setActiveIndex] = useState(1);
   const [paused, setPaused] = useState(false);
   const active = DEMO_FOLDERS[activeIndex];
+  const activeName = t(active.nameKey);
 
   useEffect(() => {
     if (paused) return;
@@ -92,11 +96,11 @@ export function ProductPreview() {
         </div>
 
         <div className="p-5 sm:p-6">
-          <p className="text-sm font-semibold text-ink">최근 접속한 사이트</p>
+          <p className="text-sm font-semibold text-ink">{t("dash.recentSites")}</p>
           <div className="mt-3 grid grid-cols-3 gap-2.5">
             {active.links.map((link) => (
               <div
-                key={`${active.name}-${link.title}`}
+                key={`${active.nameKey}-${link.titleKey}`}
                 className="rounded-2xl border border-line bg-surface p-3"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -104,25 +108,26 @@ export function ProductPreview() {
                     <Globe className="h-3.5 w-3.5 text-ink-soft" />
                   </span>
                   <span className="truncate rounded-full bg-canvas px-2 py-0.5 text-[11px] text-ink-soft">
-                    {active.icon} {active.name}
+                    {active.icon} {activeName}
                   </span>
                 </div>
-                <p className="mt-3 truncate text-sm font-semibold text-ink">{link.title}</p>
-                <p className="truncate text-[11px] text-ink-soft">{link.note}</p>
+                <p className="mt-3 truncate text-sm font-semibold text-ink">{t(link.titleKey)}</p>
+                <p className="truncate text-[11px] text-ink-soft">{t(link.noteKey)}</p>
               </div>
             ))}
           </div>
 
           <div className="mt-6 flex items-end justify-between">
-            <p className="text-sm font-semibold text-ink">내 폴더</p>
-            <p className="text-xs text-ink-soft">폴더를 눌러 살펴보세요</p>
+            <p className="text-sm font-semibold text-ink">{t("dash.myFolders")}</p>
+            <p className="text-xs text-ink-soft">{t("landing.previewHint")}</p>
           </div>
           <div className="mt-3 grid grid-cols-4 gap-3">
             {DEMO_FOLDERS.map((folder, index) => {
               const selected = index === activeIndex;
+              const name = t(folder.nameKey);
               return (
                 <button
-                  key={folder.name}
+                  key={folder.nameKey}
                   type="button"
                   onClick={() => setActiveIndex(index)}
                   className="text-left"
@@ -139,8 +144,10 @@ export function ProductPreview() {
                       {folder.icon}
                     </span>
                   </div>
-                  <p className="mt-2 truncate text-[13px] font-semibold text-ink">{folder.name}</p>
-                  <p className="text-[11px] text-ink-soft">{folder.links.length}개의 링크</p>
+                  <p className="mt-2 truncate text-[13px] font-semibold text-ink">{name}</p>
+                  <p className="text-[11px] text-ink-soft">
+                    {t("common.countLinks", { count: folder.links.length })}
+                  </p>
                 </button>
               );
             })}

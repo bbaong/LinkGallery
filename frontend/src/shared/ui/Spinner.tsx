@@ -1,11 +1,14 @@
 import { cn } from "../lib/cn";
+import { useT } from "../i18n/useT";
 
 interface SpinnerProps {
   className?: string;
   label?: string;
 }
 
-export function Spinner({ className, label = "불러오는 중..." }: SpinnerProps) {
+export function Spinner({ className, label }: SpinnerProps) {
+  const { t } = useT();
+  const resolvedLabel = label ?? t("common.loading");
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-ink-soft" role="status">
       <span
@@ -15,7 +18,7 @@ export function Spinner({ className, label = "불러오는 중..." }: SpinnerPro
         )}
         aria-hidden="true"
       />
-      <span className="text-sm">{label}</span>
+      <span className="text-sm">{resolvedLabel}</span>
     </div>
   );
 }

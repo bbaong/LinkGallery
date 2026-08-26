@@ -3,8 +3,18 @@ import bcrypt from "bcrypt";
 import { userRepository, toPublicUser } from "../users/user.repository";
 import { signAuthToken } from "./jwt";
 import { verifyFirebaseIdToken } from "./firebase";
-import type { SignupInput, LoginInput, GoogleLoginInput, UpdateProfileInput } from "./auth.schema";
+import { prisma } from "../../config/prisma";
+import type {
+  SignupInput,
+  LoginInput,
+  GoogleLoginInput,
+  UpdateProfileInput,
+  ChangePasswordInput,
+  ConfirmUsernameInput,
+  DeleteAccountInput,
+} from "./auth.schema";
 import { ApiError } from "../../shared/ApiError";
+import { localImageStorageService } from "../../shared/storage/localImageStorageService";
 
 const SALT_ROUNDS = 12;
 
@@ -100,10 +110,10 @@ export const authService = {
 
     const byGoogleId = await userRepository.findByGoogleId(googleId);
     if (byGoogleId) {
-      const updated =
-        avatarUrl && avatarUrl !== byGoogleId.avatarUrl
-          ? await userRepository.update(byGoogleId.id, { avatarUrl })
-          : byGoogleId;
+      const canApplyGooglePhoto = !byGoogleId.avatarType && avatarUrl && avatarUrl !== byGoogleId.avatarUrl;
+      const updated = canApplyGooglePhoto
+        ? await userRepository.update(byGoogleId.id, { avatarUrl })
+        : byGoogleId;
       const token = signAuthToken({ userId: updated.id });
       return { token, user: toPublicUser(updated) };
     }
@@ -112,7 +122,7 @@ export const authService = {
     if (byEmail) {
       const linked = await userRepository.update(byEmail.id, {
         googleId,
-        avatarUrl: avatarUrl ?? byEmail.avatarUrl,
+        avatarUrl: byEmail.avatarType ? byEmail.avatarUrl : avatarUrl ?? byEmail.avatarUrl,
         provider: byEmail.passwordHash ? byEmail.provider : "GOOGLE",
       });
       const token = signAuthToken({ userId: linked.id });
@@ -125,6 +135,8 @@ export const authService = {
       email,
       nickname,
       avatarUrl,
+      avatarType: avatarUrl ? "IMAGE" : null,
+      avatarValue: avatarUrl,
       googleId,
       passwordHash: null,
       provider: "GOOGLE",
@@ -153,13 +165,53 @@ export const authService = {
       throw ApiError.unauthorized();
     }
 
-    const taken = await userRepository.findByEmail(input.email);
-    if (taken && taken.id !== userId) {
-      throw ApiError.conflict("이미 사용 중인 이메일입니다.", "EMAIL_TAKEN");
+    if (input.email !== undefined) {
+      const taken = await userRepository.findByEmail(input.email);
+      if (taken && taken.id !== userId) {
+        throw ApiError.conflict("이미 사용 중인 이메일입니다.", "EMAIL_TAKEN");
+      }
+    }
+
+    const nextAvatarValue =
+      input.avatarType === "IMAGE"
+        ? input.avatarValue
+        : input.avatarType
+          ? null
+          : input.avatarUrl;
+
+    if (
+      current.avatarUrl?.startsWith("/uploads/avatars/") &&
+      nextAvatarValue !== undefined &&
+      current.avatarUrl !== nextAvatarValue
+    ) {
+      await localImageStorageService.remove(current.avatarUrl, "avatars");
+    }
+
+    if (
+      current.bannerType === "IMAGE" &&
+      current.bannerValue.startsWith("/uploads/banners/") &&
+      input.bannerValue !== undefined &&
+      current.bannerValue !== input.bannerValue
+    ) {
+      await localImageStorageService.remove(current.bannerValue, "banners");
     }
 
     try {
-      const updated = await userRepository.update(userId, { email: input.email });
+      const updated = await userRepository.update(userId, {
+        ...(input.nickname !== undefined ? { nickname: input.nickname } : {}),
+        ...(input.email !== undefined ? { email: input.email } : {}),
+        ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
+        ...(input.avatarType !== undefined
+          ? {
+              avatarType: input.avatarType,
+              avatarValue: input.avatarValue ?? null,
+              avatarUrl: input.avatarType === "IMAGE" ? input.avatarValue ?? null : null,
+            }
+          : {}),
+        ...(input.bannerType !== undefined
+          ? { bannerType: input.bannerType, bannerValue: input.bannerValue ?? current.bannerValue }
+          : {}),
+      });
       return toPublicUser(updated);
     } catch (error) {
       if (isUniqueConstraintError(error, "email")) {
@@ -167,5 +219,90 @@ export const authService = {
       }
       throw error;
     }
+  },
+
+  async changePassword(userId: string, input: ChangePasswordInput) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw ApiError.unauthorized();
+    if (user.username !== input.username) {
+      throw ApiError.forbidden("아이디가 일치하지 않습니다.", "USERNAME_MISMATCH");
+    }
+    if (!user.passwordHash) {
+      throw ApiError.badRequest("비밀번호가 없는 계정입니다. Google 로그인을 사용 중이에요.");
+    }
+
+    const matches = await bcrypt.compare(input.currentPassword, user.passwordHash);
+    if (!matches) {
+      throw ApiError.unauthorized("지금 비밀번호가 올바르지 않습니다.", "INVALID_CREDENTIALS");
+    }
+
+    const sameAsCurrent = await bcrypt.compare(input.password, user.passwordHash);
+    if (sameAsCurrent) {
+      throw ApiError.badRequest("지금과 다른 비밀번호를 입력해주세요.");
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+    await userRepository.update(userId, { passwordHash });
+  },
+
+  async resetWorkspace(userId: string, input: ConfirmUsernameInput) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw ApiError.unauthorized();
+    if (user.username !== input.username) {
+      throw ApiError.forbidden("아이디가 일치하지 않습니다.", "USERNAME_MISMATCH");
+    }
+
+    if (user.avatarUrl?.startsWith("/uploads/avatars/")) {
+      await localImageStorageService.remove(user.avatarUrl, "avatars");
+    }
+    if (user.bannerType === "IMAGE" && user.bannerValue.startsWith("/uploads/banners/")) {
+      await localImageStorageService.remove(user.bannerValue, "banners");
+    }
+
+    await prisma.$transaction([
+      prisma.folder.deleteMany({ where: { userId } }),
+      prisma.link.deleteMany({ where: { userId } }),
+      prisma.folderMember.deleteMany({ where: { userId } }),
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          avatarUrl: null,
+          avatarType: null,
+          avatarValue: null,
+          bannerType: "GRADIENT",
+          bannerValue: "#C6B3FF|#6427C8",
+        },
+      }),
+    ]);
+
+    const refreshed = await userRepository.findById(userId);
+    if (!refreshed) throw ApiError.unauthorized();
+    return toPublicUser(refreshed);
+  },
+
+  async deleteAccount(userId: string, input: DeleteAccountInput) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw ApiError.unauthorized();
+    if (user.username !== input.username) {
+      throw ApiError.forbidden("아이디가 일치하지 않습니다.", "USERNAME_MISMATCH");
+    }
+    if (user.passwordHash) {
+      if (!input.currentPassword) {
+        throw ApiError.badRequest("비밀번호를 입력해주세요.");
+      }
+      const matches = await bcrypt.compare(input.currentPassword, user.passwordHash);
+      if (!matches) {
+        throw ApiError.unauthorized("비밀번호가 올바르지 않습니다.", "INVALID_CREDENTIALS");
+      }
+    }
+
+    if (user.avatarUrl?.startsWith("/uploads/avatars/")) {
+      await localImageStorageService.remove(user.avatarUrl, "avatars");
+    }
+    if (user.bannerType === "IMAGE" && user.bannerValue.startsWith("/uploads/banners/")) {
+      await localImageStorageService.remove(user.bannerValue, "banners");
+    }
+
+    await userRepository.delete(userId);
   },
 };

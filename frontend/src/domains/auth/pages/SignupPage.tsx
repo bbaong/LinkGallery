@@ -13,10 +13,14 @@ import { signupSchema } from "../schema/authSchema";
 import type { SignupFormValues } from "../schema/authSchema";
 import { useSignupMutation, useUsernameAvailableQuery } from "../hooks/useAuthQueries";
 import { GoogleLoginButton } from "../components/GoogleLoginButton";
+import { ThemeToggle } from "../../../shared/ui/ThemeToggle";
+import { LocaleToggle } from "../../../shared/i18n/LocaleToggle";
+import { useT } from "../../../shared/i18n/useT";
 
 export function SignupPage() {
   const navigate = useNavigate();
   const signupMutation = useSignupMutation();
+  const { t } = useT();
 
   const {
     register,
@@ -43,7 +47,7 @@ export function SignupPage() {
 
   async function onSubmit(values: SignupFormValues) {
     if (usernameTaken) {
-      toast.error("이미 사용 중인 아이디입니다.");
+      toast.error(t("auth.usernameTaken"));
       return;
     }
 
@@ -51,7 +55,7 @@ export function SignupPage() {
       await signupMutation.mutateAsync(values);
       navigate("/dashboard", { replace: true });
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "회원가입에 실패했습니다.";
+      const message = error instanceof ApiRequestError ? error.message : t("auth.signupFailed");
       toast.error(message);
     }
   }
@@ -61,16 +65,20 @@ export function SignupPage() {
       <header className="border-b border-line">
         <PageContainer className="flex h-16 items-center justify-between">
           <Logo />
-          <Link to="/login">
-            <Button size="sm">로그인</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <LocaleToggle />
+            <ThemeToggle compact />
+            <Link to="/login">
+              <Button size="sm">{t("landing.login")}</Button>
+            </Link>
+          </div>
         </PageContainer>
       </header>
 
       <main className="flex justify-center px-4 py-12 sm:py-16">
         <div className="w-full max-w-2xl rounded-3xl border border-line bg-surface p-6 shadow-sm sm:p-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">회원가입</h1>
-          <p className="mt-1 text-sm text-ink-soft">계정만 만들면 바로 폴더를 시작할 수 있어요.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">{t("auth.signup")}</h1>
+          <p className="mt-1 text-sm text-ink-soft">{t("auth.signupLead")}</p>
 
           <div className="mt-6">
             <GoogleLoginButton onSuccess={() => navigate("/dashboard", { replace: true })} />
@@ -78,17 +86,17 @@ export function SignupPage() {
 
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-line" />
-            <span className="text-xs text-ink-soft">또는</span>
+            <span className="text-xs text-ink-soft">{t("common.or")}</span>
             <div className="h-px flex-1 bg-line" />
           </div>
 
           <form className="grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={handleSubmit(onSubmit)} noValidate>
             <Field
-              label="아이디"
+              label={t("settings.username")}
               htmlFor="signup-username"
-              error={errors.username?.message ?? (usernameTaken ? "이미 사용 중인 아이디입니다." : undefined)}
-              success={usernameAvailable ? "사용 가능한 아이디입니다." : undefined}
-              hint="영문 시작, 4~20자"
+              error={errors.username?.message ?? (usernameTaken ? t("auth.usernameTaken") : undefined)}
+              success={usernameAvailable ? t("auth.usernameAvailable") : undefined}
+              hint={t("auth.usernameHint")}
             >
               <Input
                 id="signup-username"
@@ -98,7 +106,7 @@ export function SignupPage() {
               />
             </Field>
 
-            <Field label="닉네임" htmlFor="signup-nickname" error={errors.nickname?.message} hint="2~20자">
+            <Field label={t("auth.nickname")} htmlFor="signup-nickname" error={errors.nickname?.message} hint={t("auth.nicknameHint")}>
               <Input
                 id="signup-nickname"
                 autoComplete="nickname"
@@ -108,10 +116,10 @@ export function SignupPage() {
             </Field>
 
             <Field
-              label="비밀번호"
+              label={t("auth.password")}
               htmlFor="signup-password"
               error={errors.password?.message}
-              hint="영문·숫자·특수문자 8자+"
+              hint={t("auth.passwordHint")}
             >
               <Input
                 id="signup-password"
@@ -123,7 +131,7 @@ export function SignupPage() {
             </Field>
 
             <Field
-              label="비밀번호 확인"
+              label={t("auth.passwordConfirm")}
               htmlFor="signup-password-confirm"
               error={errors.passwordConfirm?.message}
             >
@@ -138,15 +146,15 @@ export function SignupPage() {
 
             <div className="mt-1 sm:col-span-2">
               <Button type="submit" className="w-full" isLoading={signupMutation.isPending}>
-                회원가입
+                {t("auth.signup")}
               </Button>
             </div>
           </form>
 
           <p className="mt-6 text-sm text-ink-soft">
-            이미 계정이 있으신가요?{" "}
+            {t("auth.hasAccount")}{" "}
             <Link to="/login" className="font-medium text-brand-600 hover:underline">
-              로그인
+              {t("landing.login")}
             </Link>
           </p>
         </div>

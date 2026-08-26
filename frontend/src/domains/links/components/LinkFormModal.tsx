@@ -10,6 +10,7 @@ import { linkFormSchema } from "../schema/linkSchema";
 import type { LinkFormValues } from "../schema/linkSchema";
 import type { Link } from "../types";
 import { LinkCategoryField } from "./LinkCategoryField";
+import { useT } from "../../../shared/i18n/useT";
 
 function getDefaultValues(initialLink?: Link): LinkFormValues {
   if (initialLink) {
@@ -41,6 +42,7 @@ export function LinkFormModal({
   initialLink,
   existingCategories = [],
 }: LinkFormModalProps) {
+  const { t } = useT();
   const {
     register,
     handleSubmit,
@@ -66,7 +68,7 @@ export function LinkFormModal({
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title={initialLink ? "링크 수정" : "새 링크 저장"}>
+    <Modal open={open} onClose={handleClose} title={initialLink ? t("link.editTitle") : t("link.createTitle")}>
       <form
         className="flex flex-col gap-5"
         noValidate
@@ -76,10 +78,10 @@ export function LinkFormModal({
         })}
       >
         <Field
-          label="URL"
+          label={t("link.url")}
           htmlFor="link-url"
           error={errors.url?.message}
-          hint="example.com 또는 전체 주소를 붙여넣으세요"
+          hint={t("link.urlHint")}
         >
           <Input
             id="link-url"
@@ -89,17 +91,17 @@ export function LinkFormModal({
           />
         </Field>
 
-        <Field label="제목 (선택)" htmlFor="link-title" error={errors.title?.message}>
+        <Field label={t("link.title")} htmlFor="link-title" optional error={errors.title?.message}>
           <Input
             id="link-title"
-            placeholder="입력하지 않으면 도메인으로 저장돼요"
+            placeholder={t("link.titlePlaceholder")}
             hasError={Boolean(errors.title)}
             {...register("title")}
           />
         </Field>
 
-        <Field label="설명 (선택)" htmlFor="link-description" error={errors.description?.message}>
-          <Textarea id="link-description" placeholder="메모를 남겨보세요" {...register("description")} />
+        <Field label={t("link.description")} htmlFor="link-description" optional error={errors.description?.message}>
+          <Textarea id="link-description" placeholder={t("link.descPlaceholder")} {...register("description")} />
         </Field>
 
         <LinkCategoryField
@@ -111,10 +113,10 @@ export function LinkFormModal({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={handleClose}>
-            취소
+            {t("common.cancel")}
           </Button>
           <Button type="submit" isLoading={isSubmitting}>
-            {initialLink ? "수정 완료" : "저장하기"}
+            {initialLink ? t("folder.editAction") : t("common.save")}
           </Button>
         </div>
       </form>

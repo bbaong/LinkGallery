@@ -23,6 +23,8 @@ const router = Router();
 router.use(requireAuth);
 
 router.post("/folder-cover", upload.single("file"), asyncHandler(uploadController.uploadFolderCover));
+router.post("/avatar", upload.single("file"), asyncHandler(uploadController.uploadAvatar));
+router.post("/banner", upload.single("file"), asyncHandler(uploadController.uploadBanner));
 router.delete("/folder-cover", asyncHandler(uploadController.deleteFolderCover));
 
 export default router;

@@ -1,4 +1,4 @@
 export function assetUrl(path: string): string {
-  if (/^https?:\/\//i.test(path)) return path;
+  if (/^https?:\/\//i.test(path) || path.startsWith("blob:")) return path;
   return `${import.meta.env.VITE_ASSET_BASE_URL}${path}`;
 }

@@ -55,6 +55,12 @@ export const linkController = {
     sendSuccess(res, link, "접속 기록을 저장했습니다.");
   },
 
+  async refreshPreview(req: Request, res: Response) {
+    const linkId = requireParam(req.params, "linkId");
+    const link = await linkService.refreshPreview(req.userId!, linkId);
+    sendSuccess(res, link, "미리보기를 갱신했습니다.");
+  },
+
   async remove(req: Request, res: Response) {
     const linkId = requireParam(req.params, "linkId");
     await linkService.deleteLink(req.userId!, linkId);

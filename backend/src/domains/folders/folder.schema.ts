@@ -73,5 +73,16 @@ export const updateFolderSchema = z
     message: "수정할 내용을 입력해주세요.",
   });
 
+export const joinFolderSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .transform((value) => value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+    .refine((value) => value.length === 6, {
+      message: "초대 코드를 확인해주세요.",
+    }),
+});
+
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type UpdateFolderInput = z.infer<typeof updateFolderSchema>;
+export type JoinFolderInput = z.infer<typeof joinFolderSchema>;
