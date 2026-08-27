@@ -83,6 +83,10 @@ export const joinFolderSchema = z.object({
     }),
 });
 
+export const listActivitiesQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(50).optional(),
+});
+
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type UpdateFolderInput = z.infer<typeof updateFolderSchema>;
 export type JoinFolderInput = z.infer<typeof joinFolderSchema>;

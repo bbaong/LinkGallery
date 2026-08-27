@@ -7,6 +7,7 @@ export const queryKeys = {
     all: ["folders"] as const,
     detail: (folderId: string) => ["folders", folderId] as const,
     invite: (folderId: string) => ["folders", folderId, "invite"] as const,
+    activities: (folderId: string) => ["folders", folderId, "activities"] as const,
   },
   links: {
     byFolder: (folderId: string) => ["links", "folder", folderId] as const,

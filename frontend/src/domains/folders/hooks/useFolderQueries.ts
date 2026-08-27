@@ -29,6 +29,15 @@ export function useFolderInviteQuery(folderId: string | undefined, enabled = tru
   });
 }
 
+export function useFolderActivitiesQuery(folderId: string | undefined, enabled = false) {
+  return useQuery({
+    queryKey: queryKeys.folders.activities(folderId ?? ""),
+    queryFn: () => folderApi.listActivities(folderId!),
+    enabled: Boolean(folderId) && enabled,
+    retry: false,
+  });
+}
+
 export function useCreateFolderMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -75,6 +84,7 @@ export function useJoinFolderMutation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.folders.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.folders.detail(result.folder.id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.links.byFolder(result.folder.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.folders.activities(result.folder.id) });
     },
   });
 }
@@ -117,6 +127,7 @@ export function useRevokeFolderInviteMutation() {
 function invalidateFolderMembership(queryClient: QueryClient, folderId: string) {
   queryClient.invalidateQueries({ queryKey: queryKeys.folders.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.folders.detail(folderId) });
+  queryClient.invalidateQueries({ queryKey: queryKeys.folders.activities(folderId) });
   queryClient.invalidateQueries({ queryKey: ["links"] });
 }
 
@@ -137,6 +148,7 @@ export function useLeaveFolderMutation() {
     mutationFn: (folderId: string) => folderApi.leave(folderId),
     onSuccess: (_data, folderId) => {
       queryClient.removeQueries({ queryKey: queryKeys.folders.detail(folderId) });
+      queryClient.removeQueries({ queryKey: queryKeys.folders.activities(folderId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.folders.all });
       queryClient.invalidateQueries({ queryKey: ["links"] });
     },

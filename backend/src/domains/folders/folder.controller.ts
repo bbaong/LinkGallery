@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { folderService } from "./folder.service";
-import { createFolderSchema, joinFolderSchema, updateFolderSchema } from "./folder.schema";
+import { createFolderSchema, joinFolderSchema, listActivitiesQuerySchema, updateFolderSchema } from "./folder.schema";
 import { linkService } from "../links/link.service";
 import { listLinksQuerySchema } from "../links/link.schema";
 import { sendSuccess } from "../../shared/response";
@@ -42,6 +42,13 @@ export const folderController = {
     const query = listLinksQuerySchema.parse(req.query);
     const links = await linkService.listByFolder(req.userId!, folderId, query.search);
     sendSuccess(res, links, "링크 목록을 조회했습니다.");
+  },
+
+  async activities(req: Request, res: Response) {
+    const folderId = requireParam(req.params, "folderId");
+    const query = listActivitiesQuerySchema.parse(req.query);
+    const data = await folderService.listActivities(req.userId!, folderId, query.limit);
+    sendSuccess(res, data, "활동 기록을 조회했습니다.");
   },
 
   async getInvite(req: Request, res: Response) {

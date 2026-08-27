@@ -36,3 +36,22 @@ export interface Folder {
   createdAt: string;
   updatedAt: string;
 }
+
+export type FolderActivityType = "LINK_ADDED" | "MEMBER_JOINED" | "MEMBER_LEFT" | "MEMBER_KICKED";
+
+export interface ActivityPerson {
+  id: string | null;
+  nickname: string;
+  avatarUrl: string | null;
+  avatarType?: CoverType | null;
+  avatarValue?: string | null;
+}
+
+export interface FolderActivity {
+  id: string;
+  type: FolderActivityType;
+  actor: ActivityPerson;
+  targetName: string | null;
+  targetUser: ActivityPerson | null;
+  createdAt: string;
+}

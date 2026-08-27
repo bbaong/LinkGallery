@@ -90,6 +90,7 @@ export function useCreateLinkMutation(folderId: string) {
         if (prev.some((link) => link.id === created.id)) return prev;
         return [...prev, created];
       });
+      queryClient.invalidateQueries({ queryKey: queryKeys.folders.activities(folderId) });
       return invalidate();
     },
   });

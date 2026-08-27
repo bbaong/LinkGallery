@@ -86,6 +86,44 @@ export const linkRepository = {
     });
   },
 
+  async createWithActivity(
+    userId: string,
+    folderId: string,
+    normalized: NormalizedUrl,
+    title: string,
+    description: string | undefined,
+    position: number,
+    category: string | null,
+    actorNickname: string
+  ) {
+    const [created] = await prisma.$transaction([
+      prisma.link.create({
+        data: {
+          userId,
+          folderId,
+          url: normalized.url,
+          urlHash: normalized.urlHash,
+          title,
+          description: description ?? null,
+          faviconUrl: normalized.faviconUrl,
+          position,
+          category,
+        },
+        include: creatorSelect,
+      }),
+      prisma.folderActivity.create({
+        data: {
+          folderId,
+          actorUserId: userId,
+          type: "LINK_ADDED",
+          targetName: title,
+          actorNickname,
+        },
+      }),
+    ]);
+    return created;
+  },
+
   update(
     id: string,
     data: {

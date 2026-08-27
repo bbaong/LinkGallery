@@ -1,6 +1,6 @@
 import { apiClient } from "../../../shared/api/client";
 import type { ApiSuccessResponse } from "../../../shared/api/types";
-import type { Folder, FolderInvite } from "../types";
+import type { Folder, FolderActivity, FolderInvite } from "../types";
 import type { FolderFormValues } from "../schema/folderSchema";
 
 export interface UploadedImage {
@@ -17,6 +17,14 @@ export const folderApi = {
   async get(folderId: string) {
     const res = await apiClient.get<ApiSuccessResponse<Folder>>(`/folders/${folderId}`);
     return res.data.data;
+  },
+
+  async listActivities(folderId: string) {
+    const res = await apiClient.get<ApiSuccessResponse<{ activities: FolderActivity[] }>>(
+      `/folders/${folderId}/activities`,
+      { params: { limit: 50 } }
+    );
+    return res.data.data.activities;
   },
 
   async create(input: FolderFormValues) {

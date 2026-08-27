@@ -1,7 +1,8 @@
 import { folderRepository } from "./folder.repository";
 import { generateInviteCode, normalizeInviteCode } from "./inviteCode";
-import { INVITE_TTL_MS } from "./folder.constants";
+import { ACTIVITY_LIST_LIMIT, INVITE_TTL_MS } from "./folder.constants";
 import type { CreateFolderInput, UpdateFolderInput } from "./folder.schema";
+import { userRepository } from "../users/user.repository";
 import { ApiError } from "../../shared/ApiError";
 
 type FolderRecord = NonNullable<Awaited<ReturnType<typeof folderRepository.findById>>>;
@@ -26,6 +27,43 @@ function toPublicUser(user: FolderRecord["user"]) {
     avatarUrl: user.avatarUrl,
     avatarType: user.avatarType,
     avatarValue: user.avatarValue,
+  };
+}
+
+function memberUserOf(folder: FolderRecord, userId: string) {
+  if (folder.user.id === userId) return folder.user;
+  return folder.members.find((member) => member.userId === userId)?.user ?? null;
+}
+
+type ActivityRecord = Awaited<ReturnType<typeof folderRepository.listActivities>>[number];
+
+function toActivityPerson(
+  user: ActivityRecord["actor"],
+  fallbackId: string | null,
+  fallbackNickname: string
+) {
+  if (user) return toPublicUser(user);
+  return {
+    id: fallbackId,
+    nickname: fallbackNickname,
+    avatarUrl: null,
+    avatarType: null,
+    avatarValue: null,
+  };
+}
+
+function toActivityDto(activity: ActivityRecord) {
+  const targetNickname = activity.targetUser?.nickname ?? activity.targetNickname;
+  return {
+    id: activity.id,
+    type: activity.type,
+    actor: toActivityPerson(activity.actor, activity.actorUserId, activity.actorNickname),
+    targetName: activity.targetName,
+    targetUser:
+      activity.type === "MEMBER_KICKED"
+        ? toActivityPerson(activity.targetUser, activity.targetUserId, targetNickname ?? "")
+        : null,
+    createdAt: activity.createdAt,
   };
 }
 
@@ -204,14 +242,30 @@ export const folderService = {
     if (existing?.status === "KICKED") {
       throw ApiError.forbidden("이 폴더에 다시 참여할 수 없어요.", "MEMBERSHIP_KICKED");
     }
+
+    const joiningUser = await userRepository.findById(userId);
+    if (!joiningUser) {
+      throw ApiError.unauthorized();
+    }
+
     if (existing?.status === "LEFT") {
       if (existing.lastJoinedInviteId === invite.id) {
         throw ApiError.forbidden("이 초대 코드로는 다시 참여할 수 없어요.", "INVITE_ALREADY_USED");
       }
-      await folderRepository.reactivateMember(invite.folderId, userId, invite.id);
+      await folderRepository.reactivateMemberWithJoinActivity(
+        invite.folderId,
+        userId,
+        invite.id,
+        joiningUser.nickname
+      );
     } else {
       try {
-        await folderRepository.addMember(invite.folderId, userId, "EDITOR", invite.id);
+        await folderRepository.addMemberWithJoinActivity(
+          invite.folderId,
+          userId,
+          invite.id,
+          joiningUser.nickname
+        );
       } catch (error) {
         const candidate = error as { code?: string };
         if (candidate.code === "P2002") {
@@ -247,11 +301,15 @@ export const folderService = {
       throw ApiError.forbidden("폴더 소유자는 내보낼 수 없어요.");
     }
 
-    await folderRepository.markMemberLeft(folderId, targetUserId, "KICKED");
+    await folderRepository.markMemberLeftWithActivity(folderId, targetUserId, "KICKED", {
+      actorUserId,
+      actorNickname: folder.user.nickname,
+      targetNickname: target.user.nickname,
+    });
   },
 
   async leaveFolder(userId: string, folderId: string) {
-    const { role } = await requireFolderMember(userId, folderId);
+    const { folder, role } = await requireFolderMember(userId, folderId);
     if (role === "OWNER") {
       throw ApiError.forbidden("폴더 소유자는 나갈 수 없어요.");
     }
@@ -261,6 +319,19 @@ export const folderService = {
       throw ApiError.notFound("폴더를 찾을 수 없습니다.");
     }
 
-    await folderRepository.markMemberLeft(folderId, userId, "LEFT");
+    const actor = memberUserOf(folder, userId);
+    await folderRepository.markMemberLeftWithActivity(folderId, userId, "LEFT", {
+      actorUserId: userId,
+      actorNickname: actor?.nickname ?? "",
+    });
+  },
+
+  async listActivities(userId: string, folderId: string, limit = ACTIVITY_LIST_LIMIT) {
+    await requireFolderMember(userId, folderId);
+    const activities = await folderRepository.listActivities(
+      folderId,
+      Math.min(limit, ACTIVITY_LIST_LIMIT)
+    );
+    return { activities: activities.map(toActivityDto) };
   },
 };

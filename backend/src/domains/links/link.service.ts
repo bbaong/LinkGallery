@@ -65,10 +65,11 @@ export const linkService = {
   },
 
   async createLink(userId: string, input: CreateLinkInput) {
-    await requireFolderMember(userId, input.folderId);
+    const { folder } = await requireFolderMember(userId, input.folderId);
 
     const normalized = normalizeUrl(input.url);
     const title = input.title && input.title.length > 0 ? input.title : normalized.domain;
+    const actor = folder.user.id === userId ? folder.user : folder.members.find((member) => member.userId === userId)?.user;
 
     const duplicate = await linkRepository.findDuplicate(input.folderId, normalized.urlHash);
     if (duplicate) {
@@ -77,14 +78,15 @@ export const linkService = {
 
     const count = await linkRepository.countByFolder(input.folderId);
     try {
-      const created = await linkRepository.create(
+      const created = await linkRepository.createWithActivity(
         userId,
         input.folderId,
         normalized,
         title,
         input.description,
         count,
-        input.category ?? null
+        input.category ?? null,
+        actor?.nickname ?? ""
       );
       const previewImageUrl = await fetchLinkPreviewImage(normalized.url);
       if (!previewImageUrl) return toLinkDto(created);

@@ -172,4 +172,100 @@ export const folderRepository = {
       data: { folderId, createdByUserId, code, expiresAt },
     });
   },
+
+  async addMemberWithJoinActivity(
+    folderId: string,
+    userId: string,
+    lastJoinedInviteId: string,
+    actorNickname: string
+  ) {
+    const [member] = await prisma.$transaction([
+      prisma.folderMember.create({
+        data: {
+          folderId,
+          userId,
+          role: "EDITOR",
+          status: "ACTIVE",
+          lastJoinedInviteId,
+        },
+      }),
+      prisma.folderActivity.create({
+        data: {
+          folderId,
+          actorUserId: userId,
+          type: "MEMBER_JOINED",
+          actorNickname,
+        },
+      }),
+    ]);
+    return member;
+  },
+
+  async reactivateMemberWithJoinActivity(
+    folderId: string,
+    userId: string,
+    lastJoinedInviteId: string,
+    actorNickname: string
+  ) {
+    const [member] = await prisma.$transaction([
+      prisma.folderMember.update({
+        where: { folderId_userId: { folderId, userId } },
+        data: {
+          status: "ACTIVE",
+          role: "EDITOR",
+          leftAt: null,
+          lastJoinedInviteId,
+        },
+      }),
+      prisma.folderActivity.create({
+        data: {
+          folderId,
+          actorUserId: userId,
+          type: "MEMBER_JOINED",
+          actorNickname,
+        },
+      }),
+    ]);
+    return member;
+  },
+
+  async markMemberLeftWithActivity(
+    folderId: string,
+    targetUserId: string,
+    status: "LEFT" | "KICKED",
+    activity: {
+      actorUserId: string;
+      actorNickname: string;
+      targetNickname?: string | null;
+    }
+  ) {
+    await prisma.$transaction([
+      prisma.folderMember.update({
+        where: { folderId_userId: { folderId, userId: targetUserId } },
+        data: { status, leftAt: new Date() },
+      }),
+      prisma.folderActivity.create({
+        data: {
+          folderId,
+          actorUserId: activity.actorUserId,
+          type: status === "KICKED" ? "MEMBER_KICKED" : "MEMBER_LEFT",
+          actorNickname: activity.actorNickname,
+          targetUserId: status === "KICKED" ? targetUserId : null,
+          targetNickname: status === "KICKED" ? activity.targetNickname ?? null : null,
+        },
+      }),
+    ]);
+  },
+
+  listActivities(folderId: string, limit: number) {
+    return prisma.folderActivity.findMany({
+      where: { folderId },
+      include: {
+        actor: { select: memberUserSelect },
+        targetUser: { select: memberUserSelect },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+  },
 };

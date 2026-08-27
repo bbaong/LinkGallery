@@ -15,6 +15,7 @@ router.get("/:folderId", asyncHandler(folderController.detail));
 router.patch("/:folderId", asyncHandler(folderController.update));
 router.delete("/:folderId", asyncHandler(folderController.remove));
 router.get("/:folderId/links", asyncHandler(folderController.links));
+router.get("/:folderId/activities", asyncHandler(folderController.activities));
 router.get("/:folderId/invite", asyncHandler(folderController.getInvite));
 router.post("/:folderId/invite", asyncHandler(folderController.getOrCreateInvite));
 router.post("/:folderId/invite/regenerate", asyncHandler(folderController.regenerateInvite));

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, LayoutGrid, Link2, PanelsTopLeft, Plus, Search, Users } from "lucide-react";
+import { LayoutGrid, Link2, PanelsTopLeft, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PageContainer } from "../../../shared/ui/PageContainer";
 import { SiteHeader } from "../../../shared/ui/SiteHeader";
@@ -26,6 +26,8 @@ import { FolderCover } from "../components/FolderCover";
 import { FolderFormModal } from "../components/FolderFormModal";
 import { InviteFolderModal } from "../components/InviteFolderModal";
 import { FolderMembersModal } from "../components/FolderMembersModal";
+import { FolderActivityDrawer } from "../components/FolderActivityDrawer";
+import { FolderActionsMenu } from "../components/FolderActionsMenu";
 import { CategoryFilterBar } from "../components/CategoryFilterBar";
 import type { CategoryFilter } from "../components/CategoryFilterBar";
 import {
@@ -87,6 +89,7 @@ export function FolderDetailPage() {
   const [isFolderDeleteOpen, setIsFolderDeleteOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isMembersOpen, setIsMembersOpen] = useState(false);
+  const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [isLeaveOpen, setIsLeaveOpen] = useState(false);
   const [removingMember, setRemovingMember] = useState<FolderMember | null>(null);
   const [isEditLinkSubmitting, setIsEditLinkSubmitting] = useState(false);
@@ -302,80 +305,69 @@ export function FolderDetailPage() {
         </div>
       </div>
 
-      <PageContainer className="relative -mt-16 flex flex-col gap-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <Link
-              to="/dashboard"
-              className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t("dash.myFolders")}
-            </Link>
-            <div className="flex items-center gap-3">
-              {folder.icon ? (
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface text-2xl shadow-sm">
-                  {folder.icon}
-                </span>
-              ) : null}
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{folder.name}</h1>
-                <p className="mt-1 text-sm text-ink-soft">{t("common.countLinks", { count: folder.linkCount })}</p>
+      <PageContainer className="relative -mt-16 flex flex-col gap-10">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            {folder.icon ? (
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface text-2xl shadow-sm">
+                {folder.icon}
+              </span>
+            ) : null}
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold tracking-tight text-ink sm:text-3xl">{folder.name}</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-soft">
+                <span>{t("common.countLinks", { count: folder.linkCount })}</span>
                 {isShared ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsMembersOpen(true)}
-                    className="mt-3 flex items-center gap-2 rounded-2xl py-1 pr-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-                    aria-label={t("folder.viewMembers")}
-                  >
-                    <div className="flex -space-x-2">
-                      {members.slice(0, 4).map((member) => (
-                        <UserAvatar
-                          key={member.id}
-                          nickname={member.nickname}
-                          avatarUrl={member.avatarUrl}
-                          avatarType={member.avatarType}
-                          avatarValue={member.avatarValue}
-                          size="md"
-                          className="border-2 border-canvas"
-                        />
-                      ))}
-                    </div>
-                    <span className="text-sm text-ink-soft">
-                      {t("folder.togetherCount", { count: folder.memberCount })}
+                  <>
+                    <span className="text-line" aria-hidden="true">
+                      ·
                     </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsMembersOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full py-0.5 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                      aria-label={t("folder.viewMembers")}
+                    >
+                      <span className="flex -space-x-1.5">
+                        {members.slice(0, 3).map((member) => (
+                          <UserAvatar
+                            key={member.id}
+                            nickname={member.nickname}
+                            avatarUrl={member.avatarUrl}
+                            avatarType={member.avatarType}
+                            avatarValue={member.avatarValue}
+                            size="sm"
+                            className="border border-canvas"
+                          />
+                        ))}
+                      </span>
+                      {t("folder.togetherCount", { count: folder.memberCount })}
+                    </button>
+                  </>
                 ) : null}
+                <span className="text-line" aria-hidden="true">
+                  ·
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsActivityOpen(true)}
+                  className="rounded-full py-0.5 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                >
+                  {t("activity.title")}
+                </button>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {isOwner ? (
-              <>
-                <Button variant="secondary" size="sm" onClick={() => setIsFolderEditOpen(true)}>
-                  {t("folder.editTitle")}
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => setIsInviteOpen(true)}>
-                  <Users className="h-4 w-4" />
-                  {t("folder.invite")}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setIsFolderDeleteOpen(true)}>
-                  {t("common.delete")}
-                </Button>
-              </>
-            ) : (
-              <>
-                <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-500/20 bg-brand-500/10 px-3 text-sm font-medium text-brand-600">
-                  <Users className="h-3.5 w-3.5" />
-                  {t("folder.sharedBadge")}
-                </span>
-                <Button variant="ghost" size="sm" onClick={() => setIsLeaveOpen(true)}>
-                  {t("folder.leave")}
-                </Button>
-              </>
-            )}
-            <Button onClick={() => setIsCreateOpen(true)}>
+          <div className="flex shrink-0 items-center gap-2 self-start">
+            <FolderActionsMenu
+              isOwner={isOwner}
+              onEdit={() => setIsFolderEditOpen(true)}
+              onInvite={() => setIsInviteOpen(true)}
+              onDelete={() => setIsFolderDeleteOpen(true)}
+              onLeave={() => setIsLeaveOpen(true)}
+            />
+            <Button size="sm" onClick={() => setIsCreateOpen(true)}>
               <Plus className="h-4 w-4" />
               {t("folder.addLink")}
             </Button>
@@ -383,13 +375,41 @@ export function FolderDetailPage() {
         </div>
 
         <section>
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-ink">{t("folder.savedLinks")}</h2>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+              <h2 className="shrink-0 text-base font-semibold text-ink">{t("folder.savedLinks")}</h2>
+              <CategoryFilterBar
+                categories={categories}
+                value={categoryFilter}
+                onChange={handleCategoryFilterChange}
+                uncategorizedCount={uncategorizedCount}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[12rem] flex-1 sm:flex-none">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t("folder.searchLinks")}
+                  className="h-9 w-full pl-9 text-sm sm:w-52"
+                  aria-label={t("folder.searchLinks")}
+                />
+              </div>
+              <select
+                value={sort}
+                onChange={(event) => handleSortChange(event.target.value as LinkSort)}
+                aria-label={t("folder.sort")}
+                className="h-9 rounded-full border border-line bg-surface px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              >
+                <option value="newest">{t("folder.sortNewest")}</option>
+                <option value="oldest">{t("folder.sortOldest")}</option>
+                <option value="custom">{t("folder.sortCustom")}</option>
+              </select>
               <div
                 role="radiogroup"
                 aria-label={t("folder.viewMode")}
-                className="inline-flex h-11 items-center rounded-2xl border border-line bg-surface p-1"
+                className="inline-flex h-9 items-center rounded-full border border-line bg-surface p-0.5"
               >
                 <button
                   type="button"
@@ -399,7 +419,7 @@ export function FolderDetailPage() {
                   title={t("settings.viewCard")}
                   onClick={() => setLinkView("card")}
                   className={cn(
-                    "inline-flex h-9 w-9 items-center justify-center rounded-xl",
+                    "inline-flex h-8 w-8 items-center justify-center rounded-full",
                     linkView === "card" ? "bg-canvas text-ink shadow-sm" : "text-ink-soft hover:text-ink"
                   )}
                 >
@@ -413,42 +433,15 @@ export function FolderDetailPage() {
                   title={t("settings.viewPreview")}
                   onClick={() => setLinkView("preview")}
                   className={cn(
-                    "inline-flex h-9 w-9 items-center justify-center rounded-xl",
+                    "inline-flex h-8 w-8 items-center justify-center rounded-full",
                     linkView === "preview" ? "bg-canvas text-ink shadow-sm" : "text-ink-soft hover:text-ink"
                   )}
                 >
                   <PanelsTopLeft className="h-4 w-4" />
                 </button>
               </div>
-              <select
-                value={sort}
-                onChange={(event) => handleSortChange(event.target.value as LinkSort)}
-                aria-label={t("folder.sort")}
-                className="h-11 rounded-2xl border border-line bg-surface px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-              >
-                <option value="newest">{t("folder.sortNewest")}</option>
-                <option value="oldest">{t("folder.sortOldest")}</option>
-                <option value="custom">{t("folder.sortCustom")}</option>
-              </select>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t("folder.searchLinks")}
-                  className="w-full pl-10 sm:w-56"
-                  aria-label={t("folder.searchLinks")}
-                />
-              </div>
             </div>
           </div>
-
-          <CategoryFilterBar
-            categories={categories}
-            value={categoryFilter}
-            onChange={handleCategoryFilterChange}
-            uncategorizedCount={uncategorizedCount}
-          />
 
           {!search.trim() && categoryFilter === "all" && visibleLinks.length > 1 ? (
             <p className="mb-3 text-xs text-ink-soft">
@@ -549,6 +542,13 @@ export function FolderDetailPage() {
         folderId={folder.id}
         folderName={folder.name}
         onClose={() => setIsInviteOpen(false)}
+      />
+
+      <FolderActivityDrawer
+        open={isActivityOpen}
+        folderId={folder.id}
+        folderName={folder.name}
+        onClose={() => setIsActivityOpen(false)}
       />
 
       <FolderMembersModal

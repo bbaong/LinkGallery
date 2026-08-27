@@ -30,6 +30,13 @@ enum FolderMemberStatus {
   KICKED
 }
 
+enum FolderActivityType {
+  LINK_ADDED
+  MEMBER_JOINED
+  MEMBER_LEFT
+  MEMBER_KICKED
+}
+
 model User {
   id           String       @id @default(uuid())
   username     String       @unique
@@ -50,6 +57,8 @@ model User {
   folderMemberships    FolderMember[]
   createdFolderInvites FolderInvite[]
   links                Link[]
+  folderActivitiesAsActor  FolderActivity[] @relation("FolderActivityActor")
+  folderActivitiesAsTarget FolderActivity[] @relation("FolderActivityTarget")
 }
 
 model Folder {
@@ -63,10 +72,11 @@ model Folder {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  links   Link[]
-  members FolderMember[]
-  invites FolderInvite[]
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links      Link[]
+  members    FolderMember[]
+  invites    FolderInvite[]
+  activities FolderActivity[]
 
   @@index([userId])
 }
@@ -130,4 +140,22 @@ model Link {
   @@index([folderId])
   @@index([folderId, category])
   @@index([userId, lastVisitedAt])
+}
+
+model FolderActivity {
+  id             String             @id @default(uuid())
+  folderId       String
+  actorUserId    String?
+  type           FolderActivityType
+  targetName     String?            @db.VarChar(255)
+  targetUserId   String?
+  actorNickname  String             @db.VarChar(40)
+  targetNickname String?            @db.VarChar(40)
+  createdAt      DateTime           @default(now())
+
+  folder     Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  actor      User?  @relation("FolderActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUser User?  @relation("FolderActivityTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([folderId, createdAt])
 }
