@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { FolderHeart, ImagePlus, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageContainer } from "../../../shared/ui/PageContainer";
-import { Logo } from "../../../shared/ui/Logo";
+import { SiteHeader } from "../../../shared/ui/SiteHeader";
 import { Field } from "../../../shared/ui/Field";
 import { Input } from "../../../shared/ui/Input";
 import { Button } from "../../../shared/ui/Button";
@@ -14,7 +14,6 @@ import { UserAvatar } from "../../../shared/ui/UserAvatar";
 import { Spinner } from "../../../shared/ui/Spinner";
 import { EmptyState } from "../../../shared/ui/EmptyState";
 import { ApiRequestError } from "../../../shared/api/client";
-import { UserMenu } from "../components/UserMenu";
 import { AppearancePopover } from "../components/AppearancePopover";
 import { useAuthStore } from "../store/authStore";
 import { updateProfileFormSchema } from "../schema/authSchema";
@@ -143,12 +142,7 @@ export function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-canvas pb-20">
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-line bg-canvas/80 backdrop-blur">
-        <PageContainer className="flex h-16 items-center justify-between">
-          <Logo to="/dashboard" />
-          <UserMenu />
-        </PageContainer>
-      </header>
+      <SiteHeader />
 
       <div className="pt-16">
         <section className="group relative h-48 overflow-visible sm:h-56">

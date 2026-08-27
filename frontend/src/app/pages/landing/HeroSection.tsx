@@ -4,8 +4,10 @@ import { PageContainer } from "../../../shared/ui/PageContainer";
 import { Button } from "../../../shared/ui/Button";
 import { APP_NAME } from "../../../shared/constants/app";
 import { useT } from "../../../shared/i18n/useT";
+import { useAuthStore } from "../../../domains/auth/store/authStore";
 import { ProductPreview } from "./ProductPreview";
 import { MarqueeTags } from "./MarqueeTags";
+import { AmbientGlow } from "../../../shared/ui/AmbientGlow";
 
 interface HeroSectionProps {
   scrollY: number;
@@ -13,23 +15,12 @@ interface HeroSectionProps {
 
 export function HeroSection({ scrollY }: HeroSectionProps) {
   const { t } = useT();
+  const user = useAuthStore((state) => state.user);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
 
   return (
     <section className="relative">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div
-          className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-brand-500/20 blur-3xl dark:h-[26rem] dark:w-[26rem] dark:bg-brand-500/35 dark:blur-[90px]"
-          style={{ transform: `translate3d(0, ${scrollY * 0.18}px, 0)` }}
-        />
-        <div
-          className="absolute right-0 top-32 h-80 w-80 rounded-full bg-brand-300/35 blur-3xl dark:bg-brand-300/30 dark:blur-[90px]"
-          style={{ transform: `translate3d(0, ${scrollY * -0.12}px, 0)` }}
-        />
-        <div
-          className="absolute bottom-8 left-1/3 h-56 w-56 rounded-full bg-brand-100/70 blur-3xl dark:h-72 dark:w-72 dark:bg-brand-600/30 dark:blur-[80px]"
-          style={{ transform: `translate3d(0, ${scrollY * 0.08}px, 0)` }}
-        />
-      </div>
+      <AmbientGlow scrollY={scrollY} />
 
       <PageContainer className="relative pb-12 pt-16 lg:pb-16 lg:pt-24">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-12">
@@ -45,13 +36,21 @@ export function HeroSection({ scrollY }: HeroSectionProps) {
             <p className="mt-5 max-w-lg break-keep text-base leading-relaxed text-ink-soft sm:text-lg">
               {t("landing.heroBody")}
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/signup">
-                <Button>{t("landing.startNow")}</Button>
-              </Link>
-              <Link to="/login">
-                <Button variant="secondary">{t("landing.login")}</Button>
-              </Link>
+            <div className="mt-8 flex min-h-11 flex-wrap gap-3">
+              {!isInitialized ? null : user ? (
+                <Link to="/dashboard">
+                  <Button>{t("landing.openApp")}</Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/signup">
+                    <Button>{t("landing.startNow")}</Button>
+                  </Link>
+                  <Link to="/login">
+                    <Button variant="secondary">{t("landing.login")}</Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 

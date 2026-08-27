@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Globe } from "lucide-react";
+import { Play } from "lucide-react";
 import { FolderCover } from "../../../domains/folders/components/FolderCover";
 import { cn } from "../../../shared/lib/cn";
 import type { CoverType } from "../../../domains/folders/types";
@@ -87,71 +87,58 @@ export function ProductPreview() {
       onPointerEnter={() => setPaused(true)}
       onPointerLeave={() => setPaused(false)}
     >
-      <div className="overflow-hidden rounded-[28px] border border-line bg-canvas shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-line bg-surface px-4 py-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-          <span className="ml-3 text-xs font-medium text-ink-soft">Link Gallery</span>
+      <div className="rounded-[28px] border border-line bg-canvas p-4 shadow-sm sm:p-5">
+        <h2 className="text-2xl font-bold tracking-tight text-ink">{t("landing.previewGreeting")}</h2>
+
+        <div className="relative mt-5 overflow-hidden rounded-[28px] shadow-[0_18px_50px_rgba(124,58,237,0.18)]">
+          <div className="relative h-40 w-full sm:h-48">
+            <FolderCover coverType={active.coverType} coverValue={active.coverValue} />
+            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5">
+              <div className="min-w-0 text-white drop-shadow-[0_1px_10px_rgba(0,0,0,0.35)]">
+                <p className="text-sm font-medium text-white/90">{t("dash.featuredFolder")}</p>
+                <p className="mt-1 truncate text-2xl font-bold tracking-tight">
+                  {active.icon} {activeName}
+                </p>
+                <p className="mt-1 text-sm text-white/75">
+                  {t("common.countLinks", { count: active.links.length })}
+                </p>
+              </div>
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-[#16151a] shadow-lg">
+                <Play className="h-5 w-5 fill-current" />
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="p-5 sm:p-6">
-          <p className="text-sm font-semibold text-ink">{t("dash.recentSites")}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2.5">
-            {active.links.map((link) => (
-              <div
-                key={`${active.nameKey}-${link.titleKey}`}
-                className="rounded-2xl border border-line bg-surface p-3"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-canvas">
-                    <Globe className="h-3.5 w-3.5 text-ink-soft" />
-                  </span>
-                  <span className="truncate rounded-full bg-canvas px-2 py-0.5 text-[11px] text-ink-soft">
-                    {active.icon} {activeName}
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <p className="text-sm font-semibold text-ink">{t("dash.myFolders")}</p>
+          <p className="text-xs text-ink-soft">{t("landing.previewHint")}</p>
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-2 sm:gap-3">
+          {DEMO_FOLDERS.map((folder, index) => {
+            const selected = index === activeIndex;
+            const name = t(folder.nameKey);
+            return (
+              <button key={folder.nameKey} type="button" onClick={() => setActiveIndex(index)} className="text-left">
+                <div
+                  className={cn(
+                    "relative aspect-square overflow-hidden rounded-2xl transition-shadow",
+                    selected ? "ring-2 ring-brand-500 ring-offset-2 ring-offset-canvas" : "shadow-sm"
+                  )}
+                >
+                  <FolderCover coverType={folder.coverType} coverValue={folder.coverValue} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+                  <span className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/85 text-sm shadow-sm">
+                    {folder.icon}
                   </span>
                 </div>
-                <p className="mt-3 truncate text-sm font-semibold text-ink">{t(link.titleKey)}</p>
-                <p className="truncate text-[11px] text-ink-soft">{t(link.noteKey)}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 flex items-end justify-between">
-            <p className="text-sm font-semibold text-ink">{t("dash.myFolders")}</p>
-            <p className="text-xs text-ink-soft">{t("landing.previewHint")}</p>
-          </div>
-          <div className="mt-3 grid grid-cols-4 gap-3">
-            {DEMO_FOLDERS.map((folder, index) => {
-              const selected = index === activeIndex;
-              const name = t(folder.nameKey);
-              return (
-                <button
-                  key={folder.nameKey}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  className="text-left"
-                >
-                  <div
-                    className={cn(
-                      "relative aspect-square overflow-hidden rounded-2xl transition-shadow",
-                      selected ? "ring-2 ring-brand-500 ring-offset-2 ring-offset-canvas" : "shadow-sm"
-                    )}
-                  >
-                    <FolderCover coverType={folder.coverType} coverValue={folder.coverValue} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
-                    <span className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/85 text-sm shadow-sm">
-                      {folder.icon}
-                    </span>
-                  </div>
-                  <p className="mt-2 truncate text-[13px] font-semibold text-ink">{name}</p>
-                  <p className="text-[11px] text-ink-soft">
-                    {t("common.countLinks", { count: folder.links.length })}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+                <p className="mt-2 truncate text-[13px] font-semibold text-ink">{name}</p>
+                <p className="text-[11px] text-ink-soft">
+                  {t("common.countLinks", { count: folder.links.length })}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

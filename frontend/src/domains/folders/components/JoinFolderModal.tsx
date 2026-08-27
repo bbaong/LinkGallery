@@ -7,10 +7,28 @@ import { Input } from "../../../shared/ui/Input";
 import { ApiRequestError } from "../../../shared/api/client";
 import { useJoinFolderMutation } from "../hooks/useFolderQueries";
 import { useT } from "../../../shared/i18n/useT";
+import type { MessageKey } from "../../../shared/i18n/messages";
 
 interface JoinFolderModalProps {
   open: boolean;
   onClose: () => void;
+}
+
+const JOIN_ERROR_KEYS: Record<string, MessageKey> = {
+  INVITE_EXPIRED: "folder.inviteExpiredInput",
+  INVITE_REVOKED: "folder.inviteRevoked",
+  INVITE_INVALID: "folder.joinCodeInvalid",
+  MEMBERSHIP_KICKED: "folder.joinKicked",
+  INVITE_ALREADY_USED: "folder.joinLeftSameInvite",
+  CONFLICT: "folder.joinAlready",
+  TOO_MANY_REQUESTS: "folder.joinRateLimited",
+};
+
+function joinErrorMessage(error: unknown, t: (key: MessageKey) => string) {
+  if (error instanceof ApiRequestError && JOIN_ERROR_KEYS[error.code]) {
+    return t(JOIN_ERROR_KEYS[error.code]);
+  }
+  return t("folder.joinFailed");
 }
 
 export function JoinFolderModal({ open, onClose }: JoinFolderModalProps) {
@@ -34,8 +52,7 @@ export function JoinFolderModal({ open, onClose }: JoinFolderModalProps) {
       onClose();
       navigate(`/folders/${result.folder.id}`);
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : t("folder.joinFailed");
-      toast.error(message);
+      toast.error(joinErrorMessage(error, t));
     }
   }
 

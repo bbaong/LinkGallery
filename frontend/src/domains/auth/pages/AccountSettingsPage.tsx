@@ -4,13 +4,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { PageContainer } from "../../../shared/ui/PageContainer";
-import { Logo } from "../../../shared/ui/Logo";
+import { SiteHeader } from "../../../shared/ui/SiteHeader";
 import { ThemeToggle } from "../../../shared/ui/ThemeToggle";
 import { Field } from "../../../shared/ui/Field";
 import { Input } from "../../../shared/ui/Input";
 import { Button } from "../../../shared/ui/Button";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
-import { UserMenu } from "../components/UserMenu";
 import { useLinkViewStore } from "../../../shared/preferences/linkViewStore";
 import type { LinkViewMode } from "../../../shared/preferences/linkView";
 import { LINK_VIEW_STORAGE_KEY } from "../../../shared/preferences/linkView";
@@ -149,12 +148,7 @@ export function AccountSettingsPage() {
 
   return (
     <div className="min-h-screen bg-canvas pb-20">
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-line bg-canvas/80 backdrop-blur">
-        <PageContainer className="flex h-16 items-center justify-between">
-          <Logo to="/dashboard" />
-          <UserMenu />
-        </PageContainer>
-      </header>
+      <SiteHeader />
 
       <PageContainer className="max-w-lg pt-24">
         <div className="flex flex-col gap-10">

@@ -1,5 +1,6 @@
 export type CoverType = "SOLID" | "GRADIENT" | "GLASS" | "IMAGE";
 export type FolderRole = "OWNER" | "EDITOR";
+export type FolderInviteStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
 
 export interface FolderPerson {
   id: string;
@@ -11,6 +12,12 @@ export interface FolderPerson {
 
 export interface FolderMember extends FolderPerson {
   role: FolderRole;
+}
+
+export interface FolderInvite {
+  code: string;
+  expiresAt: string;
+  status: FolderInviteStatus;
 }
 
 export interface Folder {
@@ -26,7 +33,6 @@ export interface Folder {
   memberCount: number;
   owner: FolderPerson;
   members?: FolderMember[];
-  inviteCode?: string | null;
   createdAt: string;
   updatedAt: string;
 }

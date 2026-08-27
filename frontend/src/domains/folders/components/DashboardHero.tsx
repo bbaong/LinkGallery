@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Play } from "lucide-react";
-import { Button } from "../../../shared/ui/Button";
+import { BrandGradientPanel } from "../../../shared/ui/BrandGradientPanel";
 import { useT } from "../../../shared/i18n/useT";
 import { FolderCover } from "./FolderCover";
 import type { Folder } from "../types";
@@ -31,7 +31,7 @@ export function DashboardHero({ nickname, folders, onCreateFolder }: DashboardHe
       {featured ? (
         <Link
           to={`/folders/${featured.id}`}
-          className="group relative mt-8 block overflow-hidden rounded-[28px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          className="group relative mt-8 block overflow-hidden rounded-[28px] shadow-[0_18px_50px_rgba(124,58,237,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:shadow-[0_18px_50px_rgba(124,58,237,0.28)]"
         >
           <div className="relative h-56 w-full sm:h-72 lg:h-80">
             <FolderCover coverType={featured.coverType} coverValue={featured.coverValue} />
@@ -53,13 +53,19 @@ export function DashboardHero({ nickname, folders, onCreateFolder }: DashboardHe
           </div>
         </Link>
       ) : (
-        <div className="mt-8 flex min-h-56 flex-col items-start justify-end rounded-[28px] border border-line bg-surface px-8 py-8">
-          <p className="text-lg font-semibold text-ink">{t("dash.emptyTitle")}</p>
-          <p className="mt-1 text-sm text-ink-soft">{t("dash.emptyBody")}</p>
-          <Button className="mt-5" onClick={onCreateFolder}>
-            {t("dash.firstFolder")}
-          </Button>
-        </div>
+        <BrandGradientPanel className="mt-8">
+          <div className="flex min-h-56 flex-col items-start justify-end px-8 py-8">
+            <p className="text-lg font-semibold">{t("dash.emptyTitle")}</p>
+            <p className="mt-1 text-sm text-white/80">{t("dash.emptyBody")}</p>
+            <button
+              type="button"
+              onClick={onCreateFolder}
+              className="mt-5 inline-flex h-11 items-center rounded-full bg-white px-5 text-[15px] font-medium text-brand-700 transition-colors hover:bg-brand-50"
+            >
+              {t("dash.firstFolder")}
+            </button>
+          </div>
+        </BrandGradientPanel>
       )}
     </section>
   );

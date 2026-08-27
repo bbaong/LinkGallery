@@ -1,6 +1,6 @@
 import { apiClient } from "../../../shared/api/client";
 import type { ApiSuccessResponse } from "../../../shared/api/types";
-import type { Folder } from "../types";
+import type { Folder, FolderInvite } from "../types";
 import type { FolderFormValues } from "../schema/folderSchema";
 
 export interface UploadedImage {
@@ -33,23 +33,36 @@ export const folderApi = {
     await apiClient.delete(`/folders/${folderId}`);
   },
 
+  async getInvite(folderId: string) {
+    const res = await apiClient.get<ApiSuccessResponse<FolderInvite | null>>(`/folders/${folderId}/invite`);
+    return res.data.data;
+  },
+
   async getOrCreateInvite(folderId: string) {
-    const res = await apiClient.post<ApiSuccessResponse<{ code: string; role: "EDITOR" }>>(
-      `/folders/${folderId}/invite`
-    );
+    const res = await apiClient.post<ApiSuccessResponse<FolderInvite>>(`/folders/${folderId}/invite`);
     return res.data.data;
   },
 
   async regenerateInvite(folderId: string) {
-    const res = await apiClient.post<ApiSuccessResponse<{ code: string; role: "EDITOR" }>>(
-      `/folders/${folderId}/invite/regenerate`
-    );
+    const res = await apiClient.post<ApiSuccessResponse<FolderInvite>>(`/folders/${folderId}/invite/regenerate`);
     return res.data.data;
+  },
+
+  async revokeInvite(folderId: string) {
+    await apiClient.delete(`/folders/${folderId}/invite`);
   },
 
   async join(code: string) {
     const res = await apiClient.post<ApiSuccessResponse<Folder>>("/folders/join", { code });
     return { folder: res.data.data, message: res.data.message };
+  },
+
+  async leave(folderId: string) {
+    await apiClient.delete(`/folders/${folderId}/members/me`);
+  },
+
+  async removeMember(folderId: string, userId: string) {
+    await apiClient.delete(`/folders/${folderId}/members/${userId}`);
   },
 
   async uploadCover(file: File) {

@@ -32,7 +32,7 @@ export function ConfirmDialog({
   return (
     <Modal open={open} onClose={onClose} title={title} className="max-w-sm">
       <div className="flex flex-col gap-5">
-        {description ? <p className="text-sm text-ink-soft">{description}</p> : null}
+        {description ? <p className="whitespace-pre-line break-keep text-sm text-ink-soft">{description}</p> : null}
         {children}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>

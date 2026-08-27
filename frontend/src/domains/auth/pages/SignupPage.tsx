@@ -3,19 +3,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { PageContainer } from "../../../shared/ui/PageContainer";
-import { Logo } from "../../../shared/ui/Logo";
 import { Field } from "../../../shared/ui/Field";
 import { Input } from "../../../shared/ui/Input";
 import { Button } from "../../../shared/ui/Button";
+import { SiteHeader } from "../../../shared/ui/SiteHeader";
 import { ApiRequestError } from "../../../shared/api/client";
 import { signupSchema } from "../schema/authSchema";
 import type { SignupFormValues } from "../schema/authSchema";
 import { useSignupMutation, useUsernameAvailableQuery } from "../hooks/useAuthQueries";
 import { GoogleLoginButton } from "../components/GoogleLoginButton";
-import { ThemeToggle } from "../../../shared/ui/ThemeToggle";
-import { LocaleToggle } from "../../../shared/i18n/LocaleToggle";
 import { useT } from "../../../shared/i18n/useT";
+import { AmbientGlow } from "../../../shared/ui/AmbientGlow";
 
 export function SignupPage() {
   const navigate = useNavigate();
@@ -61,21 +59,11 @@ export function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="border-b border-line">
-        <PageContainer className="flex h-16 items-center justify-between">
-          <Logo />
-          <div className="flex items-center gap-2">
-            <LocaleToggle />
-            <ThemeToggle compact />
-            <Link to="/login">
-              <Button size="sm">{t("landing.login")}</Button>
-            </Link>
-          </div>
-        </PageContainer>
-      </header>
+    <div className="relative min-h-screen bg-canvas">
+      <SiteHeader />
+      <AmbientGlow />
 
-      <main className="flex justify-center px-4 py-12 sm:py-16">
+      <main className="relative flex justify-center px-4 pb-16 pt-28 sm:pt-32">
         <div className="w-full max-w-2xl rounded-3xl border border-line bg-surface p-6 shadow-sm sm:p-8">
           <h1 className="text-2xl font-semibold tracking-tight text-ink">{t("auth.signup")}</h1>
           <p className="mt-1 text-sm text-ink-soft">{t("auth.signupLead")}</p>

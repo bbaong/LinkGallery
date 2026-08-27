@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, LayoutGrid, Link2, PanelsTopLeft, Plus, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageContainer } from "../../../shared/ui/PageContainer";
-import { Logo } from "../../../shared/ui/Logo";
+import { SiteHeader } from "../../../shared/ui/SiteHeader";
 import { Input } from "../../../shared/ui/Input";
 import { Button } from "../../../shared/ui/Button";
 import { Spinner } from "../../../shared/ui/Spinner";
@@ -11,7 +11,6 @@ import { EmptyState } from "../../../shared/ui/EmptyState";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ApiRequestError } from "../../../shared/api/client";
 import { UserAvatar } from "../../../shared/ui/UserAvatar";
-import { UserMenu } from "../../auth/components/UserMenu";
 import { SortableLinkGrid } from "../../links/components/SortableLinkGrid";
 import { LinkFormModal } from "../../links/components/LinkFormModal";
 import {
@@ -26,14 +25,19 @@ import type { LinkFormValues } from "../../links/schema/linkSchema";
 import { FolderCover } from "../components/FolderCover";
 import { FolderFormModal } from "../components/FolderFormModal";
 import { InviteFolderModal } from "../components/InviteFolderModal";
+import { FolderMembersModal } from "../components/FolderMembersModal";
 import { CategoryFilterBar } from "../components/CategoryFilterBar";
 import type { CategoryFilter } from "../components/CategoryFilterBar";
 import {
   useDeleteFolderMutation,
   useFolderQuery,
+  useLeaveFolderMutation,
+  useRemoveFolderMemberMutation,
   useUpdateFolderMutation,
 } from "../hooks/useFolderQueries";
+import type { FolderMember } from "../types";
 import type { FolderFormValues } from "../schema/folderSchema";
+import { useAuthStore } from "../../auth/store/authStore";
 import { useLinkViewStore } from "../../../shared/preferences/linkViewStore";
 import { cn } from "../../../shared/lib/cn";
 import { useT } from "../../../shared/i18n/useT";
@@ -82,6 +86,9 @@ export function FolderDetailPage() {
   const [isFolderEditOpen, setIsFolderEditOpen] = useState(false);
   const [isFolderDeleteOpen, setIsFolderDeleteOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isMembersOpen, setIsMembersOpen] = useState(false);
+  const [isLeaveOpen, setIsLeaveOpen] = useState(false);
+  const [removingMember, setRemovingMember] = useState<FolderMember | null>(null);
   const [isEditLinkSubmitting, setIsEditLinkSubmitting] = useState(false);
 
   const folderQuery = useFolderQuery(folderId);
@@ -92,6 +99,9 @@ export function FolderDetailPage() {
   const reorderLinksMutation = useReorderLinksMutation(folderId ?? "");
   const updateFolderMutation = useUpdateFolderMutation();
   const deleteFolderMutation = useDeleteFolderMutation();
+  const removeMemberMutation = useRemoveFolderMemberMutation();
+  const leaveFolderMutation = useLeaveFolderMutation();
+  const currentUserId = useAuthStore((state) => state.user?.id);
   const linkView = useLinkViewStore((state) => state.mode);
   const setLinkView = useLinkViewStore((state) => state.setMode);
 
@@ -234,6 +244,28 @@ export function FolderDetailPage() {
     }
   }
 
+  async function handleRemoveMember() {
+    if (!folderId || !removingMember) return;
+    try {
+      await removeMemberMutation.mutateAsync({ folderId, userId: removingMember.id });
+      toast.success(t("folder.removed", { name: removingMember.nickname }));
+      setRemovingMember(null);
+    } catch {
+      toast.error(t("folder.removeFailed"));
+    }
+  }
+
+  async function handleLeaveFolder() {
+    if (!folderId) return;
+    try {
+      await leaveFolderMutation.mutateAsync(folderId);
+      toast.success(t("folder.left"));
+      navigate("/dashboard", { replace: true });
+    } catch {
+      toast.error(t("folder.leaveFailed"));
+    }
+  }
+
   if (folderQuery.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas">
@@ -261,12 +293,7 @@ export function FolderDetailPage() {
 
   return (
     <div className="min-h-screen bg-canvas pb-20">
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-line bg-canvas/80 backdrop-blur">
-        <PageContainer className="flex h-16 items-center justify-between">
-          <Logo to="/dashboard" />
-          <UserMenu />
-        </PageContainer>
-      </header>
+      <SiteHeader />
 
       <div className="pt-16">
         <div className="relative h-40 w-full sm:h-52">
@@ -295,7 +322,12 @@ export function FolderDetailPage() {
                 <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{folder.name}</h1>
                 <p className="mt-1 text-sm text-ink-soft">{t("common.countLinks", { count: folder.linkCount })}</p>
                 {isShared ? (
-                  <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsMembersOpen(true)}
+                    className="mt-3 flex items-center gap-2 rounded-2xl py-1 pr-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    aria-label={t("folder.viewMembers")}
+                  >
                     <div className="flex -space-x-2">
                       {members.slice(0, 4).map((member) => (
                         <UserAvatar
@@ -309,8 +341,10 @@ export function FolderDetailPage() {
                         />
                       ))}
                     </div>
-                    <p className="text-sm text-ink-soft">{t("folder.togetherCount", { count: folder.memberCount })}</p>
-                  </div>
+                    <span className="text-sm text-ink-soft">
+                      {t("folder.togetherCount", { count: folder.memberCount })}
+                    </span>
+                  </button>
                 ) : null}
               </div>
             </div>
@@ -331,10 +365,15 @@ export function FolderDetailPage() {
                 </Button>
               </>
             ) : (
-              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-500/20 bg-brand-500/10 px-3 text-sm font-medium text-brand-600">
-                <Users className="h-3.5 w-3.5" />
-                {t("folder.sharedBadge")}
-              </span>
+              <>
+                <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-500/20 bg-brand-500/10 px-3 text-sm font-medium text-brand-600">
+                  <Users className="h-3.5 w-3.5" />
+                  {t("folder.sharedBadge")}
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => setIsLeaveOpen(true)}>
+                  {t("folder.leave")}
+                </Button>
+              </>
             )}
             <Button onClick={() => setIsCreateOpen(true)}>
               <Plus className="h-4 w-4" />
@@ -510,6 +549,38 @@ export function FolderDetailPage() {
         folderId={folder.id}
         folderName={folder.name}
         onClose={() => setIsInviteOpen(false)}
+      />
+
+      <FolderMembersModal
+        open={isMembersOpen}
+        members={members}
+        currentUserId={currentUserId}
+        isOwner={isOwner}
+        onClose={() => setIsMembersOpen(false)}
+        onRemoveMember={(member) => {
+          setIsMembersOpen(false);
+          setRemovingMember(member);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(removingMember)}
+        title={t("folder.removeMemberTitle", { name: removingMember?.nickname ?? "" })}
+        description={t("folder.removeMemberBody")}
+        confirmLabel={removeMemberMutation.isPending ? t("folder.removing") : t("folder.removeMember")}
+        isLoading={removeMemberMutation.isPending}
+        onConfirm={handleRemoveMember}
+        onClose={() => setRemovingMember(null)}
+      />
+
+      <ConfirmDialog
+        open={isLeaveOpen}
+        title={t("folder.leaveTitle")}
+        description={t("folder.leaveBody")}
+        confirmLabel={leaveFolderMutation.isPending ? t("folder.leaving") : t("folder.leave")}
+        isLoading={leaveFolderMutation.isPending}
+        onConfirm={handleLeaveFolder}
+        onClose={() => setIsLeaveOpen(false)}
       />
 
       <ConfirmDialog

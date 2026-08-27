@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Search, FolderHeart, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageContainer } from "../../../shared/ui/PageContainer";
+import { SiteHeader } from "../../../shared/ui/SiteHeader";
+import { AmbientGlow } from "../../../shared/ui/AmbientGlow";
 import { Logo } from "../../../shared/ui/Logo";
 import { Input } from "../../../shared/ui/Input";
 import { Button } from "../../../shared/ui/Button";
@@ -10,7 +12,6 @@ import { EmptyState } from "../../../shared/ui/EmptyState";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ApiRequestError } from "../../../shared/api/client";
 import { APP_NAME } from "../../../shared/constants/app";
-import { UserMenu } from "../../auth/components/UserMenu";
 import { useAuthStore } from "../../auth/store/authStore";
 import { useAllLinksQuery, useRecentLinksQuery } from "../../links/hooks/useLinkQueries";
 import { RecentLinkCard } from "../../links/components/RecentLinkCard";
@@ -42,7 +43,6 @@ export function DashboardPage() {
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
   const [isQuickLaunchOpen, setIsQuickLaunchOpen] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[] | null>(null);
-  const [scrolled, setScrolled] = useState(false);
 
   const foldersQuery = useFoldersQuery();
   const recentLinksQuery = useRecentLinksQuery(12);
@@ -59,15 +59,6 @@ export function DashboardPage() {
     if (!user?.id) return;
     setPinnedIds(loadQuickLaunchIds(user.id));
   }, [user?.id]);
-
-  useEffect(() => {
-    function onScroll() {
-      setScrolled(window.scrollY > 8);
-    }
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   const filteredFolders = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -141,19 +132,13 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <header
-        className={`fixed inset-x-0 top-0 z-30 border-b bg-canvas/80 backdrop-blur-md transition-shadow duration-300 ${
-          scrolled ? "border-line shadow-sm" : "border-transparent"
-        }`}
-      >
-        <PageContainer className="flex h-16 items-center justify-between">
-          <Logo to="/dashboard" />
-          <UserMenu />
-        </PageContainer>
-      </header>
+    <div className="relative min-h-screen overflow-x-hidden bg-canvas">
+      <SiteHeader />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[38rem]">
+        <AmbientGlow />
+      </div>
 
-      <PageContainer className="flex flex-col gap-12 pt-28 pb-16">
+      <PageContainer className="relative flex flex-col gap-12 pt-28 pb-16">
         <DashboardHero
           nickname={user?.nickname ?? ""}
           folders={folders}

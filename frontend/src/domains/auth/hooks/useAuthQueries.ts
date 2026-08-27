@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiRequestError } from "../../../shared/api/client";
 import { queryKeys } from "../../../shared/api/queryKeys";
 import { authApi } from "../api/authApi";
 import { useAuthStore } from "../store/authStore";
@@ -13,15 +12,12 @@ export function useMeQuery() {
     queryFn: async () => {
       try {
         return await authApi.me();
-      } catch (error) {
-        if (error instanceof ApiRequestError && error.code === "UNAUTHORIZED") {
-          return null;
-        }
-        throw error;
+      } catch {
+        return null;
       }
     },
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
   });
 }
 
