@@ -24,6 +24,12 @@ enum FolderMemberRole {
   EDITOR
 }
 
+enum FolderMemberStatus {
+  ACTIVE
+  LEFT
+  KICKED
+}
+
 model User {
   id           String       @id @default(uuid())
   username     String       @unique
@@ -40,9 +46,10 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  folders Folder[]
-  folderMemberships FolderMember[]
-  links   Link[]
+  folders              Folder[]
+  folderMemberships    FolderMember[]
+  createdFolderInvites FolderInvite[]
+  links                Link[]
 }
 
 model Folder {
@@ -53,29 +60,50 @@ model Folder {
   coverType  CoverType @default(GRADIENT)
   coverValue String
   position   Int       @default(0)
-  inviteCode String?   @unique @db.VarChar(6)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
   user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   links   Link[]
   members FolderMember[]
+  invites FolderInvite[]
 
   @@index([userId])
 }
 
-model FolderMember {
-  id       String           @id @default(uuid())
-  folderId String
-  userId   String
-  role     FolderMemberRole
-  joinedAt DateTime         @default(now())
+model FolderInvite {
+  id              String    @id @default(uuid())
+  folderId        String
+  createdByUserId String
+  code            String    @unique @db.VarChar(6)
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
 
-  folder Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder           Folder         @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  createdBy        User           @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  joinedMemberships FolderMember[]
+
+  @@index([folderId])
+}
+
+model FolderMember {
+  id                 String             @id @default(uuid())
+  folderId           String
+  userId             String
+  role               FolderMemberRole
+  status             FolderMemberStatus @default(ACTIVE)
+  joinedAt           DateTime           @default(now())
+  leftAt             DateTime?
+  lastJoinedInviteId String?
+
+  folder           Folder        @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastJoinedInvite FolderInvite? @relation(fields: [lastJoinedInviteId], references: [id], onDelete: SetNull)
 
   @@unique([folderId, userId])
   @@index([userId])
+  @@index([folderId, status])
 }
 
 model Link {

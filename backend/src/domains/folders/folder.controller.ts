@@ -44,6 +44,12 @@ export const folderController = {
     sendSuccess(res, links, "링크 목록을 조회했습니다.");
   },
 
+  async getInvite(req: Request, res: Response) {
+    const folderId = requireParam(req.params, "folderId");
+    const invite = await folderService.getInvite(req.userId!, folderId);
+    sendSuccess(res, invite, "초대 코드를 조회했습니다.");
+  },
+
   async getOrCreateInvite(req: Request, res: Response) {
     const folderId = requireParam(req.params, "folderId");
     const invite = await folderService.getOrCreateInviteCode(req.userId!, folderId);
@@ -56,9 +62,28 @@ export const folderController = {
     sendSuccess(res, invite, "초대 코드를 새로 만들었습니다.");
   },
 
+  async revokeInvite(req: Request, res: Response) {
+    const folderId = requireParam(req.params, "folderId");
+    await folderService.revokeInvite(req.userId!, folderId);
+    sendSuccess(res, null, "초대를 닫았습니다.");
+  },
+
   async join(req: Request, res: Response) {
     const input = joinFolderSchema.parse(req.body);
     const folder = await folderService.joinByCode(req.userId!, input.code);
     sendSuccess(res, folder, `${folder.name} 폴더에 참여했어요 🎉`);
+  },
+
+  async leave(req: Request, res: Response) {
+    const folderId = requireParam(req.params, "folderId");
+    await folderService.leaveFolder(req.userId!, folderId);
+    sendSuccess(res, null, "폴더에서 나갔습니다.");
+  },
+
+  async removeMember(req: Request, res: Response) {
+    const folderId = requireParam(req.params, "folderId");
+    const userId = requireParam(req.params, "userId");
+    await folderService.removeMember(req.userId!, folderId, userId);
+    sendSuccess(res, null, "멤버를 내보냈습니다.");
   },
 };

@@ -1,10 +1,13 @@
 import { folderRepository } from "./folder.repository";
 import { generateInviteCode, normalizeInviteCode } from "./inviteCode";
+import { INVITE_TTL_MS } from "./folder.constants";
 import type { CreateFolderInput, UpdateFolderInput } from "./folder.schema";
 import { ApiError } from "../../shared/ApiError";
 
 type FolderRecord = NonNullable<Awaited<ReturnType<typeof folderRepository.findById>>>;
+type InviteRecord = NonNullable<Awaited<ReturnType<typeof folderRepository.findInviteByCode>>>;
 export type FolderRole = "OWNER" | "EDITOR";
+export type FolderInviteStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
 
 function memberCountOf(folder: FolderRecord) {
   return Math.max(folder._count.members, folder.members.length, 1);
@@ -26,10 +29,24 @@ function toPublicUser(user: FolderRecord["user"]) {
   };
 }
 
+function inviteStatus(invite: InviteRecord): FolderInviteStatus {
+  if (invite.revokedAt) return "REVOKED";
+  if (invite.expiresAt.getTime() <= Date.now()) return "EXPIRED";
+  return "ACTIVE";
+}
+
+function toInviteDto(invite: InviteRecord) {
+  return {
+    code: invite.code,
+    expiresAt: invite.expiresAt,
+    status: inviteStatus(invite),
+  };
+}
+
 function toFolderDto(
   folder: FolderRecord,
   userId: string,
-  options?: { includeInvite?: boolean; includeMembers?: boolean }
+  options?: { includeMembers?: boolean }
 ) {
   const myRole = resolveRole(folder, userId);
   if (!myRole) return null;
@@ -54,7 +71,6 @@ function toFolderDto(
           role: member.role,
         }))
       : undefined,
-    inviteCode: options?.includeInvite && myRole === "OWNER" ? folder.inviteCode : undefined,
   };
 }
 
@@ -78,13 +94,16 @@ export async function requireFolderOwner(userId: string, folderId: string) {
   return access;
 }
 
-async function assignUniqueInviteCode(folderId: string) {
+async function createUniqueInvite(folderId: string, createdByUserId: string) {
+  await folderRepository.revokeOpenInvites(folderId);
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const code = generateInviteCode();
-    const existing = await folderRepository.findByInviteCode(code);
+    const existing = await folderRepository.findInviteByCode(code);
     if (existing) continue;
     try {
-      return await folderRepository.updateInviteCode(folderId, code);
+      return await folderRepository.createInvite(folderId, createdByUserId, code, expiresAt);
     } catch (error) {
       const candidate = error as { code?: string };
       if (candidate.code === "P2002") continue;
@@ -104,7 +123,7 @@ export const folderService = {
 
   async getFolder(userId: string, folderId: string) {
     const { folder } = await requireFolderMember(userId, folderId);
-    return toFolderDto(folder, userId, { includeInvite: true, includeMembers: true });
+    return toFolderDto(folder, userId, { includeMembers: true });
   },
 
   async createFolder(userId: string, input: CreateFolderInput) {
@@ -116,7 +135,7 @@ export const folderService = {
   async updateFolder(userId: string, folderId: string, input: UpdateFolderInput) {
     await requireFolderOwner(userId, folderId);
     const updated = await folderRepository.update(folderId, input);
-    return toFolderDto(updated, userId, { includeInvite: true, includeMembers: true });
+    return toFolderDto(updated, userId, { includeMembers: true });
   },
 
   async deleteFolder(userId: string, folderId: string) {
@@ -124,48 +143,85 @@ export const folderService = {
     await folderRepository.delete(folderId);
   },
 
+  async getInvite(userId: string, folderId: string) {
+    await requireFolderOwner(userId, folderId);
+    const latest = await folderRepository.findLatestInvite(folderId);
+    if (!latest || latest.revokedAt) return null;
+    return toInviteDto(latest);
+  },
+
   async getOrCreateInviteCode(userId: string, folderId: string) {
-    const { folder } = await requireFolderOwner(userId, folderId);
+    await requireFolderOwner(userId, folderId);
     await folderRepository.ensureOwnerMember(folderId, userId);
-    if (folder.inviteCode) {
-      return { code: folder.inviteCode, role: "EDITOR" as const };
-    }
-    const updated = await assignUniqueInviteCode(folderId);
-    return { code: updated.inviteCode!, role: "EDITOR" as const };
+    const active = await folderRepository.findActiveInvite(folderId);
+    if (active) return toInviteDto(active);
+    const created = await createUniqueInvite(folderId, userId);
+    return toInviteDto(created);
   },
 
   async regenerateInviteCode(userId: string, folderId: string) {
     await requireFolderOwner(userId, folderId);
-    const updated = await assignUniqueInviteCode(folderId);
-    return { code: updated.inviteCode!, role: "EDITOR" as const };
+    await folderRepository.ensureOwnerMember(folderId, userId);
+    const created = await createUniqueInvite(folderId, userId);
+    return toInviteDto(created);
+  },
+
+  async revokeInvite(userId: string, folderId: string) {
+    await requireFolderOwner(userId, folderId);
+    await folderRepository.revokeOpenInvites(folderId);
   },
 
   async joinByCode(userId: string, rawCode: string) {
     const code = normalizeInviteCode(rawCode);
     if (code.length !== 6) {
-      throw ApiError.badRequest("초대 코드를 확인해주세요.");
+      throw ApiError.badRequest("초대 코드를 확인해주세요.", "INVITE_INVALID");
     }
 
-    const folder = await folderRepository.findByInviteCode(code);
+    const invite = await folderRepository.findInviteByCode(code);
+    if (!invite) {
+      throw ApiError.badRequest("초대 코드를 확인해주세요.", "INVITE_INVALID");
+    }
+    if (invite.revokedAt) {
+      throw ApiError.badRequest("이 초대 코드는 더 이상 사용할 수 없어요.", "INVITE_REVOKED");
+    }
+    if (invite.expiresAt.getTime() <= Date.now()) {
+      throw ApiError.badRequest("이 초대 코드는 만료되었어요.", "INVITE_EXPIRED");
+    }
+
+    const folder = await folderRepository.findById(invite.folderId);
     if (!folder) {
-      throw ApiError.badRequest("초대 코드를 확인해주세요.");
+      throw ApiError.badRequest("초대 코드를 확인해주세요.", "INVITE_INVALID");
     }
 
-    if (resolveRole(folder, userId)) {
+    if (folder.userId === userId || resolveRole(folder, userId)) {
       throw ApiError.conflict("이미 참여하고 있는 폴더예요.");
     }
 
-    try {
-      await folderRepository.addMember(folder.id, userId, "EDITOR");
-    } catch (error) {
-      const candidate = error as { code?: string };
-      if (candidate.code === "P2002") {
-        throw ApiError.conflict("이미 참여하고 있는 폴더예요.");
+    const existing = await folderRepository.findMember(invite.folderId, userId);
+    if (existing?.status === "ACTIVE") {
+      throw ApiError.conflict("이미 참여하고 있는 폴더예요.");
+    }
+    if (existing?.status === "KICKED") {
+      throw ApiError.forbidden("이 폴더에 다시 참여할 수 없어요.", "MEMBERSHIP_KICKED");
+    }
+    if (existing?.status === "LEFT") {
+      if (existing.lastJoinedInviteId === invite.id) {
+        throw ApiError.forbidden("이 초대 코드로는 다시 참여할 수 없어요.", "INVITE_ALREADY_USED");
       }
-      throw error;
+      await folderRepository.reactivateMember(invite.folderId, userId, invite.id);
+    } else {
+      try {
+        await folderRepository.addMember(invite.folderId, userId, "EDITOR", invite.id);
+      } catch (error) {
+        const candidate = error as { code?: string };
+        if (candidate.code === "P2002") {
+          throw ApiError.conflict("이미 참여하고 있는 폴더예요.");
+        }
+        throw error;
+      }
     }
 
-    const joined = await folderRepository.findById(folder.id);
+    const joined = await folderRepository.findById(invite.folderId);
     if (!joined) {
       throw ApiError.notFound("폴더를 찾을 수 없습니다.");
     }
@@ -174,5 +230,37 @@ export const folderService = {
       throw ApiError.notFound("폴더를 찾을 수 없습니다.");
     }
     return dto;
+  },
+
+  async removeMember(actorUserId: string, folderId: string, targetUserId: string) {
+    const { folder } = await requireFolderOwner(actorUserId, folderId);
+
+    if (targetUserId === actorUserId || folder.userId === targetUserId) {
+      throw ApiError.forbidden("폴더 소유자는 내보낼 수 없어요.");
+    }
+
+    const target = folder.members.find((member) => member.userId === targetUserId);
+    if (!target) {
+      throw ApiError.notFound("멤버를 찾을 수 없습니다.");
+    }
+    if (target.role === "OWNER") {
+      throw ApiError.forbidden("폴더 소유자는 내보낼 수 없어요.");
+    }
+
+    await folderRepository.markMemberLeft(folderId, targetUserId, "KICKED");
+  },
+
+  async leaveFolder(userId: string, folderId: string) {
+    const { role } = await requireFolderMember(userId, folderId);
+    if (role === "OWNER") {
+      throw ApiError.forbidden("폴더 소유자는 나갈 수 없어요.");
+    }
+
+    const existing = await folderRepository.findMember(folderId, userId);
+    if (!existing || existing.status !== "ACTIVE") {
+      throw ApiError.notFound("폴더를 찾을 수 없습니다.");
+    }
+
+    await folderRepository.markMemberLeft(folderId, userId, "LEFT");
   },
 };
